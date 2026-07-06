@@ -1,0 +1,6 @@
+# Feature module. Each feature is self-contained:
+#   components/  UI for this feature
+#   hooks/       React Query hooks & feature logic
+#   api/         Supabase queries/mutations
+#   schema.ts    Zod schemas
+#   types.ts     Feature-specific types
