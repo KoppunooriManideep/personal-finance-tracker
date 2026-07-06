@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" rx="96" fill="#0f172a"/>
-  <text x="50%" y="52%" dominant-baseline="central" text-anchor="middle"
+  <circle cx="382" cy="132" r="44" fill="#22c55e"/>
+  <rect x="94" y="342" width="132" height="64" rx="24" fill="#f59e0b"/>
+  <path d="M128 300l76-72 58 48 114-132" fill="none" stroke="#38bdf8" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="50%" y="54%" dominant-baseline="central" text-anchor="middle"
         font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="300" font-weight="700" fill="#ffffff">₹</text>
+        font-size="270" font-weight="800" fill="#ffffff">&#8377;</text>
 </svg>
