@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, Plus, Search } from 'lucide-react'
+import { ArrowLeftRight, Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState } from '@/components/common/empty-state'
@@ -10,6 +10,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/date'
 import { formatPaise } from '@/lib/money'
@@ -196,7 +205,7 @@ export function TransactionsPage() {
             <div className="space-y-6">
               {groupedTransactions.map(([date, items]) => (
                 <section key={date} className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between sticky top-14 z-10 bg-background/95 backdrop-blur-xs py-2">
                     <h2 className="text-muted-foreground text-sm font-medium">
                       {date}
                     </h2>
@@ -233,6 +242,18 @@ export function TransactionsPage() {
         categories={categories ?? []}
       />
 
+      {canManage && (
+        <button
+          type="button"
+          onClick={openCreate}
+          disabled={(accounts ?? []).length < 1}
+          className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-50 md:hidden"
+          aria-label="Add transaction"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
+
       <ConfirmDialog
         open={Boolean(toDelete)}
         onOpenChange={(open) => !open && setToDelete(null)}
@@ -253,26 +274,26 @@ interface SummaryCardsProps {
 
 function SummaryCards({ totals }: SummaryCardsProps) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-3 gap-2 sm:gap-3">
       {transactionTypes.map((type) => {
         const meta = transactionTypeMeta[type]
         const Icon = meta.icon
         return (
           <Card key={type}>
-            <CardContent className="flex items-center gap-3 p-4">
+            <CardContent className="flex items-center gap-2 p-2 sm:gap-3 sm:p-4">
               <div
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-lg',
+                  'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg',
                   meta.badgeClassName,
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-muted-foreground text-xs">{meta.label}</p>
+                <p className="text-muted-foreground text-[10px] sm:text-xs truncate">{meta.label}</p>
                 <p
                   className={cn(
-                    'font-semibold tabular-nums',
+                    'text-xs sm:text-sm md:text-base font-semibold tabular-nums truncate',
                     meta.amountClassName,
                   )}
                 >
@@ -302,6 +323,8 @@ function TransactionFiltersCard({
   categories,
   members,
 }: TransactionFiltersCardProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
   const update = (patch: Partial<TransactionFilters>) =>
     onFiltersChange({ ...filters, ...patch })
 
@@ -311,98 +334,236 @@ function TransactionFiltersCard({
       : true,
   )
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (filters.from) count++
+    if (filters.to) count++
+    if (filters.type) count++
+    if (filters.accountId) count++
+    if (filters.categoryId) count++
+    if (filters.memberId) count++
+    return count
+  }, [filters])
+
   return (
-    <Card>
-      <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-7">
-        <FilterField label="From">
-          <Input
-            type="date"
-            value={filters.from ?? ''}
-            onChange={(event) => update({ from: event.target.value })}
-          />
-        </FilterField>
-        <FilterField label="To">
-          <Input
-            type="date"
-            value={filters.to ?? ''}
-            onChange={(event) => update({ to: event.target.value })}
-          />
-        </FilterField>
-        <FilterField label="Type">
-          <select
-            className={selectClassName}
-            value={filters.type ?? ''}
-            onChange={(event) =>
-              update({
-                type: (event.target.value || undefined) as
-                  | TransactionType
-                  | undefined,
-                categoryId:
-                  event.target.value === 'transfer' ? '' : filters.categoryId,
-              })
-            }
-          >
-            <option value="">All</option>
-            {transactionTypes.map((type) => (
-              <option key={type} value={type}>
-                {transactionTypeMeta[type].label}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Account">
-          <select
-            className={selectClassName}
-            value={filters.accountId ?? ''}
-            onChange={(event) => update({ accountId: event.target.value })}
-          >
-            <option value="">All accounts</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Category">
-          <select
-            className={selectClassName}
-            value={filters.categoryId ?? ''}
-            disabled={filters.type === 'transfer'}
-            onChange={(event) => update({ categoryId: event.target.value })}
-          >
-            <option value="">All categories</option>
-            {categoryOptions.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Account Owner">
-          <select
-            className={selectClassName}
-            value={filters.memberId ?? ''}
-            onChange={(event) => update({ memberId: event.target.value })}
-          >
-            <option value="">All members</option>
-            <option value="shared">Shared / Family</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.userId}>
-                {getMemberDisplayName(member)}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Search">
+    <>
+      {/* Desktop view (inline card) */}
+      <Card className="hidden md:block">
+        <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-7">
+          <FilterField label="From">
+            <Input
+              type="date"
+              value={filters.from ?? ''}
+              onChange={(event) => update({ from: event.target.value })}
+            />
+          </FilterField>
+          <FilterField label="To">
+            <Input
+              type="date"
+              value={filters.to ?? ''}
+              onChange={(event) => update({ to: event.target.value })}
+            />
+          </FilterField>
+          <FilterField label="Type">
+            <select
+              className={selectClassName}
+              value={filters.type ?? ''}
+              onChange={(event) =>
+                update({
+                  type: (event.target.value || undefined) as
+                    | TransactionType
+                    | undefined,
+                  categoryId:
+                    event.target.value === 'transfer' ? '' : filters.categoryId,
+                })
+              }
+            >
+              <option value="">All</option>
+              {transactionTypes.map((type) => (
+                <option key={type} value={type}>
+                  {transactionTypeMeta[type].label}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Account">
+            <select
+              className={selectClassName}
+              value={filters.accountId ?? ''}
+              onChange={(event) => update({ accountId: event.target.value })}
+            >
+              <option value="">All accounts</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Category">
+            <select
+              className={selectClassName}
+              value={filters.categoryId ?? ''}
+              disabled={filters.type === 'transfer'}
+              onChange={(event) => update({ categoryId: event.target.value })}
+            >
+              <option value="">All categories</option>
+              {categoryOptions.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Account Owner">
+            <select
+              className={selectClassName}
+              value={filters.memberId ?? ''}
+              onChange={(event) => update({ memberId: event.target.value })}
+            >
+              <option value="">All members</option>
+              <option value="shared">Shared / Family</option>
+              {members.map((member) => (
+                <option key={member.id} value={member.userId}>
+                  {getMemberDisplayName(member)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Search">
+            <Input
+              value={filters.search ?? ''}
+              onChange={(event) => update({ search: event.target.value })}
+              placeholder="Note, account..."
+            />
+          </FilterField>
+        </CardContent>
+      </Card>
+
+      {/* Mobile view (search row + filter sheet trigger) */}
+      <div className="flex gap-2 items-center md:hidden w-full">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={filters.search ?? ''}
             onChange={(event) => update({ search: event.target.value })}
-            placeholder="Note, account..."
+            placeholder="Search note, account..."
+            className="pl-9 h-10"
           />
-        </FilterField>
-      </CardContent>
-    </Card>
+        </div>
+        
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="flex gap-1.5 shrink-0 relative h-10">
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>Filters</span>
+              {activeFiltersCount > 0 ? (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              ) : null}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="rounded-t-xl max-h-[85vh] overflow-y-auto px-6 pb-6 pt-4">
+            <SheetHeader className="text-left mb-4">
+              <SheetTitle>Filters</SheetTitle>
+              <SheetDescription>
+                Narrow down your transaction list.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="space-y-4 my-2 pr-1">
+              <FilterField label="From">
+                <Input
+                  type="date"
+                  value={filters.from ?? ''}
+                  onChange={(event) => update({ from: event.target.value })}
+                  className="h-10"
+                />
+              </FilterField>
+              <FilterField label="To">
+                <Input
+                  type="date"
+                  value={filters.to ?? ''}
+                  onChange={(event) => update({ to: event.target.value })}
+                  className="h-10"
+                />
+              </FilterField>
+              <FilterField label="Type">
+                <select
+                  className={cn(selectClassName, 'h-10')}
+                  value={filters.type ?? ''}
+                  onChange={(event) =>
+                    update({
+                      type: (event.target.value || undefined) as
+                        | TransactionType
+                        | undefined,
+                      categoryId:
+                        event.target.value === 'transfer' ? '' : filters.categoryId,
+                    })
+                  }
+                >
+                  <option value="">All Types</option>
+                  {transactionTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {transactionTypeMeta[type].label}
+                    </option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Account">
+                <select
+                  className={cn(selectClassName, 'h-10')}
+                  value={filters.accountId ?? ''}
+                  onChange={(event) => update({ accountId: event.target.value })}
+                >
+                  <option value="">All accounts</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Category">
+                <select
+                  className={cn(selectClassName, 'h-10')}
+                  value={filters.categoryId ?? ''}
+                  disabled={filters.type === 'transfer'}
+                  onChange={(event) => update({ categoryId: event.target.value })}
+                >
+                  <option value="">All categories</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Account Owner">
+                <select
+                  className={cn(selectClassName, 'h-10')}
+                  value={filters.memberId ?? ''}
+                  onChange={(event) => update({ memberId: event.target.value })}
+                >
+                  <option value="">All members</option>
+                  <option value="shared">Shared / Family</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.userId}>
+                      {getMemberDisplayName(member)}
+                    </option>
+                  ))}
+                </select>
+              </FilterField>
+            </div>
+            <SheetFooter className="mt-6">
+              <Button onClick={() => setIsOpen(false)} className="w-full h-11 text-base font-medium">
+                Apply Filters
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
   )
 }
 

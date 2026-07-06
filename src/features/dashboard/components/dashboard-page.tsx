@@ -123,13 +123,13 @@ export function DashboardPage() {
         title="Dashboard"
         description="Income, expenses and recent activity at a glance."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex flex-wrap items-center gap-1 rounded-lg border bg-muted p-0.5">
+          <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center">
+            <div className="flex items-center gap-1 rounded-lg border bg-muted p-0.5 overflow-x-auto scrollbar-none whitespace-nowrap max-sm:-mx-4 max-sm:px-4 snap-x max-w-full shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedOwnerId(null)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all snap-start',
                   selectedOwnerId === null
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -148,7 +148,7 @@ export function DashboardPage() {
                     type="button"
                     onClick={() => setSelectedOwnerId(member.userId)}
                     className={cn(
-                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
+                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all snap-start',
                       isSelected
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground',
@@ -166,7 +166,7 @@ export function DashboardPage() {
               })}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 shrink-0 max-sm:w-[140px]">
               <Label htmlFor="dashboard-month" className="sr-only">
                 Month
               </Label>
@@ -177,7 +177,7 @@ export function DashboardPage() {
                 onChange={(event) => {
                   if (event.target.value) setSelectedMonth(event.target.value)
                 }}
-                className="w-[140px]"
+                className="w-full sm:w-[140px]"
               />
             </div>
           </div>
@@ -391,15 +391,15 @@ function SummaryCards({
 
   return (
     <TooltipProvider>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-3">
         {cards.map((card) => {
           const Icon = card.icon
           const isBalanceCard = card.id === 'balance'
 
           const canExpand = isBalanceCard
             ? (showBalanceByMember
-                ? (!hideBalanceToggle && balanceByMember.length > 1)
-                : (card.accounts && card.accounts.length > 1))
+              ? (!hideBalanceToggle && balanceByMember.length > 1)
+              : (card.accounts && card.accounts.length > 1))
             : Boolean(card.breakdownType && card.members.length > 1)
 
           const expandKey = isBalanceCard ? 'balance' : card.breakdownType
@@ -410,8 +410,8 @@ function SummaryCards({
 
           return (
             <Card key={card.label}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-3 md:gap-4">
                   <div
                     className={cn(
                       'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
@@ -422,7 +422,7 @@ function SummaryCards({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-muted-foreground text-xs sm:text-sm truncate">
                         {card.label}
                       </p>
                       {card.tooltip ? (
@@ -442,13 +442,13 @@ function SummaryCards({
                     </div>
                     <p
                       className={cn(
-                        'text-xl font-semibold tabular-nums',
+                        'text-lg sm:text-xl font-semibold tabular-nums',
                         card.className,
                       )}
                     >
                       {formatPaise(card.value)}
                     </p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-muted-foreground text-2xs sm:text-xs truncate">
                       {card.subtitle}
                     </p>
                   </div>
@@ -636,7 +636,7 @@ function ExpenseByCategoryChart({ data }: { data: CategoryExpenseDatum[] }) {
         {data.length === 0 ? (
           <ChartEmptyState text="No expenses this month" />
         ) : (
-          <div className="h-72">
+          <div className="h-60 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -669,7 +669,7 @@ function MonthlyIncomeExpenseChart({ data }: { data: MonthlyDatum[] }) {
         <CardTitle>Monthly income vs expense</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-72">
+        <div className="h-60 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -700,7 +700,7 @@ function SpendingTrendChart({ data }: { data: TrendDatum[] }) {
         <CardTitle>Spending trend</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-72">
+        <div className="h-60 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />

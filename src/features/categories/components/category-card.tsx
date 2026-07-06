@@ -28,7 +28,7 @@ export function CategoryCard({
 }: CategoryCardProps) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-3 p-4">
+      <CardContent className="flex items-center gap-3 py-2 px-3 md:py-3 md:px-4">
         <CategoryBadge
           name={category.name}
           icon={category.icon}
@@ -39,7 +39,7 @@ export function CategoryCard({
         {category.isDefault ? (
           <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
             <BadgeCheck className="h-3.5 w-3.5" />
-            Default
+            <span>Default</span>
           </span>
         ) : null}
 
@@ -49,7 +49,7 @@ export function CategoryCard({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="-mr-1 shrink-0"
+                className="-mr-1 shrink-0 h-9 w-9 md:h-8 md:w-8 flex items-center justify-center"
                 aria-label={`Actions for ${category.name}`}
               >
                 <MoreVertical className="h-4 w-4" />

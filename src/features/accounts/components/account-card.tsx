@@ -34,7 +34,7 @@ export function AccountCard({
 
   return (
     <Card>
-      <CardContent className="flex items-start gap-4 p-4">
+      <CardContent className="flex items-start gap-2.5 p-3 md:gap-4 md:p-4">
         <div
           className={cn(
             'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
@@ -45,11 +45,11 @@ export function AccountCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{account.name}</p>
-          <p className="text-muted-foreground text-xs">{meta.label}</p>
+          <p className="truncate text-sm md:text-base font-medium">{account.name}</p>
+          <p className="text-muted-foreground text-2xs md:text-xs">{meta.label}</p>
           <p
             className={cn(
-              'mt-2 text-lg font-semibold tabular-nums',
+              'mt-2 text-base md:text-lg font-semibold tabular-nums',
               isNegative && 'text-destructive',
             )}
           >

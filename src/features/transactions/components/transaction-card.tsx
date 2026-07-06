@@ -59,7 +59,7 @@ export function TransactionCard({
 
   return (
     <Card>
-      <CardContent className="flex items-start gap-3 p-4">
+      <CardContent className="flex items-start gap-2.5 p-3 md:gap-3 md:p-4">
         <div
           className={cn(
             'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
