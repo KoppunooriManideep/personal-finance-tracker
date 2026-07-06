@@ -13,6 +13,7 @@ export const accountSchema = z.object({
     .min(1, 'Please enter an account name')
     .max(60, 'Name is too long'),
   type: z.enum(accountTypes, { message: 'Select an account type' }),
+  ownerId: z.string().uuid().nullable(),
   openingBalance: z
     .number({ message: 'Enter a valid amount' })
     .refine(Number.isFinite, 'Enter a valid amount'),

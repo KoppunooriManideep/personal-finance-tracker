@@ -38,6 +38,7 @@ export function useCreateAccount() {
         userId: user!.id,
         name: values.name,
         type: values.type,
+        ownerId: values.ownerId,
         openingBalancePaise: rupeesToPaise(values.openingBalance),
       }),
     onMutate: async (values) => {
@@ -48,6 +49,7 @@ export function useCreateAccount() {
         id: `optimistic-${crypto.randomUUID()}`,
         name: values.name,
         type: values.type,
+        ownerId: values.ownerId,
         openingBalance: paise,
         currentBalance: paise,
       }
@@ -83,6 +85,7 @@ export function useUpdateAccount() {
         id,
         name: values.name,
         type: values.type,
+        ownerId: values.ownerId,
         openingBalancePaise: rupeesToPaise(values.openingBalance),
       }),
     onMutate: async ({ id, values }) => {
@@ -100,6 +103,7 @@ export function useUpdateAccount() {
               ...account,
               name: values.name,
               type: values.type,
+              ownerId: values.ownerId,
               openingBalance: nextOpening,
               currentBalance: account.currentBalance + delta,
             }

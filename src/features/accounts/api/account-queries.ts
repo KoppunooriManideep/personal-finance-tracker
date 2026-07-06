@@ -6,6 +6,8 @@ export interface AccountWithBalance {
   id: string
   name: string
   type: AccountType
+  /** Family member who owns this account; null means Shared / Family. */
+  ownerId: string | null
   /** Opening balance in integer paise. */
   openingBalance: number
   /** Current balance in integer paise (opening ± transactions/transfers). */
@@ -22,7 +24,7 @@ export async function fetchAccounts(
 ): Promise<AccountWithBalance[]> {
   const { data, error } = await supabase
     .from('account_balances')
-    .select('account_id, name, type, opening_balance, current_balance')
+    .select('account_id, name, type, owner_id, opening_balance, current_balance')
     .eq('family_id', familyId)
     .order('name', { ascending: true })
 
@@ -32,6 +34,7 @@ export async function fetchAccounts(
     id: row.account_id!,
     name: row.name!,
     type: row.type!,
+    ownerId: row.owner_id ?? null,
     openingBalance: row.opening_balance ?? 0,
     currentBalance: row.current_balance ?? 0,
   }))

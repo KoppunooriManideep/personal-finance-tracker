@@ -121,6 +121,7 @@ export interface Database {
           type: AccountType
           opening_balance: number
           currency: string
+          owner_id: string | null
           created_by: string | null
           created_at: string
           updated_at: string
@@ -133,6 +134,7 @@ export interface Database {
           type: AccountType
           opening_balance?: number
           currency?: string
+          owner_id?: string | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -145,6 +147,7 @@ export interface Database {
           type?: AccountType
           opening_balance?: number
           currency?: string
+          owner_id?: string | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -400,6 +403,7 @@ export interface Database {
         Row: {
           account_id: string | null
           family_id: string | null
+          owner_id: string | null
           name: string | null
           type: AccountType | null
           opening_balance: number | null

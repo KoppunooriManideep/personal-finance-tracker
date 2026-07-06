@@ -7,6 +7,7 @@ export interface CreateAccountInput {
   userId: string
   name: string
   type: AccountType
+  ownerId: string | null
   /** Opening balance in integer paise. */
   openingBalancePaise: number
 }
@@ -15,6 +16,7 @@ export interface UpdateAccountInput {
   id: string
   name: string
   type: AccountType
+  ownerId: string | null
   /** Opening balance in integer paise. */
   openingBalancePaise: number
 }
@@ -33,6 +35,7 @@ export async function createAccount(
     family_id: input.familyId,
     name: input.name,
     type: input.type,
+    owner_id: input.ownerId,
     opening_balance: input.openingBalancePaise,
     created_by: input.userId,
   })
@@ -44,6 +47,7 @@ export async function createAccount(
     id,
     name: input.name,
     type: input.type,
+    ownerId: input.ownerId,
     openingBalance: input.openingBalancePaise,
     currentBalance: input.openingBalancePaise,
   }
@@ -56,6 +60,7 @@ export async function updateAccount(input: UpdateAccountInput): Promise<void> {
     .update({
       name: input.name,
       type: input.type,
+      owner_id: input.ownerId,
       opening_balance: input.openingBalancePaise,
     })
     .eq('id', input.id)

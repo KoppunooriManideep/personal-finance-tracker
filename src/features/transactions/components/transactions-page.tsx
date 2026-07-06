@@ -31,6 +31,7 @@ import {
 import type { Transaction } from '@/features/transactions/api/transaction-queries'
 import type { FamilyMember } from '@/features/family/api/family-queries'
 import type { TransactionType } from '@/types/database.types'
+import type { AccountWithBalance } from '@/features/accounts/api/account-queries'
 
 const emptyFilters: TransactionFilters = {
   from: '',
@@ -378,13 +379,14 @@ function TransactionFiltersCard({
             ))}
           </select>
         </FilterField>
-        <FilterField label="Member">
+        <FilterField label="Account Owner">
           <select
             className={selectClassName}
             value={filters.memberId ?? ''}
             onChange={(event) => update({ memberId: event.target.value })}
           >
             <option value="">All members</option>
+            <option value="shared">Shared / Family</option>
             {members.map((member) => (
               <option key={member.id} value={member.userId}>
                 {getMemberDisplayName(member)}
@@ -422,7 +424,7 @@ function FilterField({
 function matchesFilters(
   transaction: Transaction,
   filters: TransactionFilters,
-  accountsById: Map<string, { name: string }>,
+  accountsById: Map<string, AccountWithBalance>,
   categoriesById: Map<string, { name: string }>,
 ) {
   const occurredOn = toDateInputValue(transaction.occurredAt)
@@ -433,8 +435,21 @@ function matchesFilters(
   if (filters.categoryId && transaction.categoryId !== filters.categoryId) {
     return false
   }
-  if (filters.memberId && transaction.createdBy !== filters.memberId) {
-    return false
+  if (filters.memberId) {
+    const targetOwnerId = filters.memberId === 'shared' ? null : filters.memberId
+
+    if (transaction.type === 'transfer') {
+      const fromOwnerId = transaction.fromAccountId ? accountsById.get(transaction.fromAccountId)?.ownerId : null
+      const toOwnerId = transaction.toAccountId ? accountsById.get(transaction.toAccountId)?.ownerId : null
+      if (fromOwnerId !== targetOwnerId && toOwnerId !== targetOwnerId) {
+        return false
+      }
+    } else {
+      const ownerId = transaction.accountId ? accountsById.get(transaction.accountId)?.ownerId : null
+      if (ownerId !== targetOwnerId) {
+        return false
+      }
+    }
   }
   if (filters.accountId && !transactionTouchesAccount(transaction, filters.accountId)) {
     return false

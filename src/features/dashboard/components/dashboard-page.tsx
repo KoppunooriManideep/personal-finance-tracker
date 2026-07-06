@@ -3,8 +3,11 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   ChevronDown,
+  Info,
   LayoutDashboard,
   Scale,
+  Users,
+  WalletCards,
 } from 'lucide-react'
 import {
   Bar,
@@ -17,7 +20,7 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from 'recharts'
@@ -34,6 +37,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { formatMonthYear } from '@/lib/date'
 import { formatPaise } from '@/lib/money'
@@ -41,9 +50,12 @@ import { useAccounts } from '@/features/accounts/hooks/use-accounts'
 import { useCategories } from '@/features/categories/hooks/use-categories'
 import { useDashboardData } from '@/features/dashboard/hooks/use-dashboard-data'
 import { TransactionCard } from '@/features/transactions/components/transaction-card'
+import { useFamilyMembers } from '@/features/family/hooks/use-family-members'
+import { useDashboardStore } from '@/stores/dashboard-store'
 import type { Transaction } from '@/features/transactions/api/transaction-queries'
 import type { AccountWithBalance } from '@/features/accounts/api/account-queries'
 import type { Category } from '@/features/categories/api/category-queries'
+import type { FamilyMember } from '@/features/family/api/family-queries'
 import type {
   CategoryExpenseDatum,
   MemberIncomeExpenseDatum,
@@ -57,12 +69,21 @@ export function DashboardPage() {
 
   const { data: accounts, isLoading: accountsLoading } = useAccounts()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
+  const { data: familyMembers, isLoading: familyMembersLoading } = useFamilyMembers()
+  const { selectedOwnerId, setSelectedOwnerId } = useDashboardStore()
+
   const {
     data: dashboard,
     isLoading: dashboardLoading,
     isError,
     refetch,
-  } = useDashboardData(selectedMonth, categories)
+  } = useDashboardData(
+    selectedMonth,
+    categories,
+    accounts,
+    familyMembers,
+    selectedOwnerId,
+  )
 
   const accountsById = useMemo(
     () => new Map((accounts ?? []).map((account) => [account.id, account])),
@@ -74,10 +95,25 @@ export function DashboardPage() {
     [categories],
   )
 
-  const isLoading = dashboardLoading || accountsLoading || categoriesLoading
+  const selectedMember = useMemo(() => {
+    return familyMembers?.find((m) => m.userId === selectedOwnerId)
+  }, [familyMembers, selectedOwnerId])
+
+  const filteredAccounts = useMemo(() => {
+    if (!accounts) return []
+    if (!selectedOwnerId) return accounts
+    return accounts.filter((account) => account.ownerId === selectedOwnerId)
+  }, [accounts, selectedOwnerId])
+
+  const isLoading =
+    dashboardLoading ||
+    accountsLoading ||
+    categoriesLoading ||
+    familyMembersLoading
   const hasAnyDashboardData =
     dashboard &&
-    (dashboard.totalIncome > 0 ||
+    ((accounts?.length ?? 0) > 0 ||
+      dashboard.totalIncome > 0 ||
       dashboard.totalExpense > 0 ||
       dashboard.recentTransactions.length > 0)
 
@@ -87,21 +123,75 @@ export function DashboardPage() {
         title="Dashboard"
         description="Income, expenses and recent activity at a glance."
         actions={
-          <div className="space-y-1.5">
-            <Label htmlFor="dashboard-month" className="sr-only">
-              Month
-            </Label>
-            <Input
-              id="dashboard-month"
-              type="month"
-              value={selectedMonth}
-              onChange={(event) => {
-                if (event.target.value) setSelectedMonth(event.target.value)
-              }}
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-1 rounded-lg border bg-muted p-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedOwnerId(null)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  selectedOwnerId === null
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Users className="h-3.5 w-3.5" />
+                <span>Family</span>
+              </button>
+              {familyMembers?.map((member) => {
+                const isSelected = selectedOwnerId === member.userId
+                const name = member.profile?.fullName || member.displayName || 'Unknown'
+                const firstName = getFirstName(name)
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => setSelectedOwnerId(member.userId)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
+                      isSelected
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <Avatar size="sm" className="h-4 w-4">
+                      <AvatarImage src={member.profile?.avatarUrl ?? undefined} alt={name} />
+                      <AvatarFallback className="text-[9px] font-bold">
+                        {getInitials(name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{firstName}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dashboard-month" className="sr-only">
+                Month
+              </Label>
+              <Input
+                id="dashboard-month"
+                type="month"
+                value={selectedMonth}
+                onChange={(event) => {
+                  if (event.target.value) setSelectedMonth(event.target.value)
+                }}
+                className="w-[140px]"
+              />
+            </div>
           </div>
         }
       />
+
+      {selectedOwnerId && selectedMember && (
+        <div className="bg-sky-500/5 text-sky-700 dark:text-sky-300 border border-sky-500/10 rounded-lg p-3 text-xs flex items-center gap-2">
+          <Info className="h-4 w-4 shrink-0 text-sky-500" />
+          <span>
+            Showing only accounts owned by <strong>{getFirstName(selectedMember.profile?.fullName || selectedMember.displayName || 'this member')}</strong>. Shared/Family accounts are excluded.
+          </span>
+        </div>
+      )}
 
       {isLoading ? (
         <LoadingSpinner />
@@ -122,8 +212,11 @@ export function DashboardPage() {
             income={dashboard.totalIncome}
             expense={dashboard.totalExpense}
             net={dashboard.netBalance}
+            accounts={filteredAccounts}
             selectedMonth={selectedMonth}
             memberIncomeExpense={dashboard.memberIncomeExpense}
+            familyMembers={familyMembers ?? []}
+            selectedOwnerId={selectedOwnerId}
           />
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -148,36 +241,128 @@ interface SummaryCardsProps {
   income: number
   expense: number
   net: number
+  accounts: AccountWithBalance[]
   selectedMonth: string
   memberIncomeExpense: MemberIncomeExpenseDatum[]
+  familyMembers: FamilyMember[]
+  selectedOwnerId: string | null
 }
 
 function SummaryCards({
   income,
   expense,
   net,
+  accounts,
   selectedMonth,
   memberIncomeExpense,
+  familyMembers,
+  selectedOwnerId,
 }: SummaryCardsProps) {
-  const [expanded, setExpanded] = useState<'income' | 'expense' | null>(null)
+  const [expanded, setExpanded] = useState<
+    'balance' | 'income' | 'expense' | null
+  >(null)
+  const totalBalance = accounts.reduce(
+    (sum, account) => sum + account.currentBalance,
+    0,
+  )
+
+  const showBalanceByMember = selectedOwnerId === null
+
+  const balanceByMember = useMemo(() => {
+    if (!showBalanceByMember) return []
+
+    const memberBalances: MemberBalanceDatum[] = []
+    const groups = new Map<string | null, number>()
+    accounts.forEach((account) => {
+      const key = account.ownerId
+      groups.set(key, (groups.get(key) ?? 0) + account.currentBalance)
+    })
+
+    familyMembers.forEach((member) => {
+      const bal = groups.get(member.userId) ?? 0
+      if (bal !== 0) {
+        memberBalances.push({
+          userId: member.userId,
+          name: member.profile?.fullName?.trim() || member.displayName?.trim() || 'Unknown',
+          avatarUrl: member.profile?.avatarUrl ?? null,
+          balance: bal,
+        })
+      }
+      groups.delete(member.userId)
+    })
+
+    groups.forEach((bal, key) => {
+      if (bal !== 0) {
+        if (key === null) {
+          memberBalances.push({
+            userId: null,
+            name: 'Shared / Family',
+            avatarUrl: null,
+            balance: bal,
+          })
+        } else {
+          memberBalances.push({
+            userId: key,
+            name: 'Unknown Member',
+            avatarUrl: null,
+            balance: bal,
+          })
+        }
+      }
+    })
+
+    return memberBalances.sort((a, b) => b.balance - a.balance)
+  }, [accounts, familyMembers, showBalanceByMember])
+
+  const hasSharedAccounts = accounts.some((acc) => acc.ownerId === null)
+  const hideBalanceToggle = showBalanceByMember && ((familyMembers?.length ?? 0) <= 1 && !hasSharedAccounts)
+
+  const selectedMember = familyMembers?.find((m) => m.userId === selectedOwnerId)
+  const memberName = selectedMember
+    ? getFirstName(selectedMember.profile?.fullName || selectedMember.displayName || '')
+    : ''
+  const balanceSubtitle = selectedOwnerId
+    ? `For ${memberName} (now)`
+    : 'Across all accounts (now)'
+
   const incomeMembers = memberIncomeExpense.filter((member) => member.income > 0)
   const expenseMembers = memberIncomeExpense.filter(
     (member) => member.expense > 0,
   )
+  const monthLabel = formatMonthYear(
+    new Date(`${selectedMonth}-01T00:00:00+05:30`),
+  )
   const cards: SummaryCardConfig[] = [
     {
+      id: 'balance',
+      label: 'Total Balance',
+      subtitle: balanceSubtitle,
+      value: totalBalance,
+      icon: WalletCards,
+      className:
+        totalBalance < 0
+          ? 'text-rose-600 dark:text-rose-400'
+          : 'text-foreground',
+      bgClassName: 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
+      members: [],
+      accounts,
+      tooltip: 'Money you have across all accounts right now.',
+    },
+    {
       id: 'income',
-      label: 'Income',
+      label: 'Income this month',
+      subtitle: monthLabel,
       value: income,
       icon: ArrowUpCircle,
       className: 'text-emerald-600 dark:text-emerald-400',
-      bgClassName: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+      bgClassName: 'bg-emerald-500/10 text-emerald-700 dark:text-sky-300',
       members: incomeMembers,
       breakdownType: 'income',
     },
     {
       id: 'expense',
-      label: 'Expense',
+      label: 'Spent this month',
+      subtitle: monthLabel,
       value: expense,
       icon: ArrowDownCircle,
       className: 'text-rose-600 dark:text-rose-400',
@@ -187,7 +372,8 @@ function SummaryCards({
     },
     {
       id: 'net',
-      label: 'Net balance',
+      label: 'Saved this month',
+      subtitle: 'Income - Spent',
       value: net,
       icon: Scale,
       className:
@@ -199,99 +385,210 @@ function SummaryCards({
           ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
           : 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
       members: [],
+      tooltip: "What's left after this month's spending.",
     },
   ]
 
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      {cards.map((card) => {
-        const Icon = card.icon
-        const canExpand = Boolean(card.breakdownType && card.members.length > 1)
-        const isExpanded = expanded === card.breakdownType
-        return (
-          <Card key={card.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div
-                  className={cn(
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-                    card.bgClassName,
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-muted-foreground text-sm">
-                    {card.label}
-                  </p>
-                  <p
-                    className={cn(
-                      'text-xl font-semibold tabular-nums',
-                      card.className,
-                    )}
-                  >
-                    {formatPaise(card.value)}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatMonthYear(
-                      new Date(`${selectedMonth}-01T00:00:00+05:30`),
-                    )}
-                  </p>
-                </div>
-              </div>
+    <TooltipProvider>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => {
+          const Icon = card.icon
+          const isBalanceCard = card.id === 'balance'
 
-              {canExpand ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpanded(isExpanded ? null : card.breakdownType!)
-                    }
-                    className="text-muted-foreground hover:text-foreground mt-3 inline-flex items-center gap-1 text-xs transition-colors"
-                    aria-expanded={isExpanded}
-                  >
-                    <ChevronDown
-                      className={cn(
-                        'h-3.5 w-3.5 transition-transform',
-                        isExpanded && 'rotate-180',
-                      )}
-                    />
-                    by member
-                  </button>
+          const canExpand = isBalanceCard
+            ? (showBalanceByMember
+                ? (!hideBalanceToggle && balanceByMember.length > 1)
+                : (card.accounts && card.accounts.length > 1))
+            : Boolean(card.breakdownType && card.members.length > 1)
+
+          const expandKey = isBalanceCard ? 'balance' : card.breakdownType
+          const isExpanded = Boolean(expandKey && expanded === expandKey)
+          const toggleLabel = isBalanceCard
+            ? (showBalanceByMember ? 'by member' : 'by account')
+            : 'by member'
+
+          return (
+            <Card key={card.label}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
                   <div
                     className={cn(
-                      'grid overflow-hidden transition-all duration-200 ease-out',
-                      isExpanded
-                        ? 'mt-3 grid-rows-[1fr] opacity-100'
-                        : 'mt-0 grid-rows-[0fr] opacity-0',
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                      card.bgClassName,
                     )}
                   >
-                    <div className="min-h-0">
-                      <MemberBreakdownList
-                        members={card.members}
-                        type={card.breakdownType!}
-                      />
-                    </div>
+                    <Icon className="h-5 w-5" />
                   </div>
-                </>
-              ) : null}
-            </CardContent>
-          </Card>
-        )
-      })}
-    </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-muted-foreground text-sm">
+                        {card.label}
+                      </p>
+                      {card.tooltip ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground inline-flex rounded-full transition-colors"
+                              aria-label={`${card.label} info`}
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{card.tooltip}</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                    </div>
+                    <p
+                      className={cn(
+                        'text-xl font-semibold tabular-nums',
+                        card.className,
+                      )}
+                    >
+                      {formatPaise(card.value)}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {card.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                {canExpand ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded(isExpanded ? null : expandKey!)
+                      }
+                      className="text-muted-foreground hover:text-foreground mt-3 inline-flex items-center gap-1 text-xs transition-colors"
+                      aria-expanded={isExpanded}
+                    >
+                      <ChevronDown
+                        className={cn(
+                          'h-3.5 w-3.5 transition-transform',
+                          isExpanded && 'rotate-180',
+                        )}
+                      />
+                      {toggleLabel}
+                    </button>
+                    <div
+                      className={cn(
+                        'grid overflow-hidden transition-all duration-200 ease-out',
+                        isExpanded
+                          ? 'mt-3 grid-rows-[1fr] opacity-100'
+                          : 'mt-0 grid-rows-[0fr] opacity-0',
+                      )}
+                    >
+                      <div className="min-h-0">
+                        {isBalanceCard ? (
+                          showBalanceByMember ? (
+                            <MemberBalanceBreakdownList members={balanceByMember} />
+                          ) : (
+                            <AccountBreakdownList accounts={card.accounts!} />
+                          )
+                        ) : (
+                          <MemberBreakdownList
+                            members={card.members}
+                            type={card.breakdownType!}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+    </TooltipProvider>
   )
 }
 
 interface SummaryCardConfig {
-  id: 'income' | 'expense' | 'net'
+  id: 'balance' | 'income' | 'expense' | 'net'
   label: string
+  subtitle: string
   value: number
   icon: typeof ArrowUpCircle
   className: string
   bgClassName: string
   members: MemberIncomeExpenseDatum[]
+  accounts?: AccountWithBalance[]
   breakdownType?: 'income' | 'expense'
+  tooltip?: string
+}
+
+interface MemberBalanceDatum {
+  userId: string | null
+  name: string
+  avatarUrl: string | null
+  balance: number
+}
+
+function MemberBalanceBreakdownList({
+  members,
+}: {
+  members: MemberBalanceDatum[]
+}) {
+  return (
+    <ul className="border-border/70 space-y-2 border-t pt-3">
+      {members.map((member) => (
+        <li
+          key={member.userId ?? 'shared'}
+          className="flex items-center justify-between gap-2 text-sm"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar size="sm">
+              <AvatarImage src={member.avatarUrl ?? undefined} alt={member.name} />
+              <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+            </Avatar>
+            <span className="truncate">{getFirstName(member.name)}</span>
+          </div>
+          <span
+            className={cn(
+              'shrink-0 font-medium tabular-nums',
+              member.balance < 0
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-foreground',
+            )}
+          >
+            {formatPaise(member.balance)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function AccountBreakdownList({
+  accounts,
+}: {
+  accounts: AccountWithBalance[]
+}) {
+  return (
+    <ul className="border-border/70 space-y-2 border-t pt-3">
+      {accounts.map((account) => (
+        <li
+          key={account.id}
+          className="flex items-center justify-between gap-2 text-sm"
+        >
+          <span className="truncate">{account.name}</span>
+          <span
+            className={cn(
+              'shrink-0 font-medium tabular-nums',
+              account.currentBalance < 0
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-foreground',
+            )}
+          >
+            {formatPaise(account.currentBalance)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 function MemberBreakdownList({
@@ -354,7 +651,7 @@ function ExpenseByCategoryChart({ data }: { data: CategoryExpenseDatum[] }) {
                     <Cell key={entry.categoryId} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatPaise(Number(value))} />
+                <RechartsTooltip formatter={(value) => formatPaise(Number(value))} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -384,7 +681,7 @@ function MonthlyIncomeExpenseChart({ data }: { data: MonthlyDatum[] }) {
                   formatPaise(Number(value), { decimals: false })
                 }
               />
-              <Tooltip formatter={(value) => formatPaise(Number(value))} />
+              <RechartsTooltip formatter={(value) => formatPaise(Number(value))} />
               <Legend />
               <Bar dataKey="income" name="Income" fill="#16a34a" radius={4} />
               <Bar dataKey="expense" name="Expense" fill="#e11d48" radius={4} />
@@ -415,7 +712,7 @@ function SpendingTrendChart({ data }: { data: TrendDatum[] }) {
                   formatPaise(Number(value), { decimals: false })
                 }
               />
-              <Tooltip formatter={(value) => formatPaise(Number(value))} />
+              <RechartsTooltip formatter={(value) => formatPaise(Number(value))} />
               <Line
                 type="monotone"
                 dataKey="expense"

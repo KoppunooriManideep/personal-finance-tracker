@@ -4,6 +4,8 @@ import { fetchDashboardData } from '@/features/dashboard/api/dashboard-queries'
 import type { Transaction } from '@/features/transactions/api/transaction-queries'
 import { useCurrentFamily } from '@/features/family/hooks/use-current-family'
 import type { Category } from '@/features/categories/api/category-queries'
+import type { AccountWithBalance } from '@/features/accounts/api/account-queries'
+import type { FamilyMember } from '@/features/family/api/family-queries'
 
 export interface CategoryExpenseDatum {
   categoryId: string
@@ -53,6 +55,9 @@ export function dashboardQueryKey(
 export function useDashboardData(
   selectedMonth: string,
   categories: Category[] | undefined,
+  accounts: AccountWithBalance[] | undefined,
+  familyMembers: FamilyMember[] | undefined,
+  selectedOwnerId: string | null,
 ) {
   const { data: family } = useCurrentFamily()
   const familyId = family?.id
@@ -70,8 +75,11 @@ export function useDashboardData(
       query.data.recentTransactions,
       selectedMonth,
       categories ?? [],
+      accounts ?? [],
+      familyMembers ?? [],
+      selectedOwnerId,
     )
-  }, [query.data, selectedMonth, categories])
+  }, [query.data, selectedMonth, categories, accounts, familyMembers, selectedOwnerId])
 
   return { ...query, data: aggregates }
 }
@@ -81,10 +89,31 @@ function aggregateDashboardData(
   recentTransactions: Transaction[],
   selectedMonth: string,
   categories: Category[],
+  accounts: AccountWithBalance[],
+  familyMembers: FamilyMember[],
+  selectedOwnerId: string | null,
 ): DashboardAggregates {
+  const accountsById = new Map(accounts.map((account) => [account.id, account]))
+  const scopedAccountIds = new Set(
+    accounts
+      .filter((account) =>
+        selectedOwnerId ? account.ownerId === selectedOwnerId : true,
+      )
+      .map((account) => account.id),
+  )
+  const scopedReportTransactions = selectedOwnerId
+    ? reportTransactions.filter((transaction) =>
+        transaction.accountId ? scopedAccountIds.has(transaction.accountId) : false,
+      )
+    : reportTransactions
+  const scopedRecentTransactions = selectedOwnerId
+    ? recentTransactions.filter((transaction) =>
+        transactionMatchesAccounts(transaction, scopedAccountIds),
+      )
+    : recentTransactions
   const selectedYear = Number(selectedMonth.slice(0, 4))
   const selectedMonthIndex = Number(selectedMonth.slice(5, 7)) - 1
-  const monthTransactions = reportTransactions.filter((transaction) => {
+  const monthTransactions = scopedReportTransactions.filter((transaction) => {
     const parts = getIstParts(transaction.occurredAt)
     return parts.year === selectedYear && parts.monthIndex === selectedMonthIndex
   })
@@ -109,12 +138,16 @@ function aggregateDashboardData(
       categoriesById,
     ),
     monthlyIncomeExpense: buildMonthlyIncomeExpense(
-      reportTransactions,
+      scopedReportTransactions,
       selectedYear,
     ),
     spendingTrend: buildSpendingTrend(monthTransactions, selectedMonth),
-    memberIncomeExpense: buildMemberIncomeExpense(monthTransactions),
-    recentTransactions,
+    memberIncomeExpense: buildMemberIncomeExpense(
+      monthTransactions,
+      accountsById,
+      familyMembers,
+    ),
+    recentTransactions: scopedRecentTransactions,
   }
 }
 
@@ -190,20 +223,34 @@ function buildSpendingTrend(
 
 function buildMemberIncomeExpense(
   transactions: Transaction[],
+  accountsById: Map<string, AccountWithBalance>,
+  familyMembers: FamilyMember[],
 ): MemberIncomeExpenseDatum[] {
   const totals = new Map<string, MemberIncomeExpenseDatum>()
+  const membersByUserId = new Map(
+    familyMembers.map((member) => [member.userId, member]),
+  )
 
   transactions.forEach((transaction) => {
     if (transaction.type === 'transfer') return
 
-    const userId = transaction.createdBy ?? 'unknown'
+    const ownerId = transaction.accountId
+      ? accountsById.get(transaction.accountId)?.ownerId
+      : null
+    const userId = ownerId ?? 'shared'
+    const member = ownerId ? membersByUserId.get(ownerId) : undefined
+    const name = ownerId
+      ? member?.profile?.fullName?.trim() ||
+        member?.displayName?.trim() ||
+        'Unknown'
+      : 'Shared / Family'
     const existing = totals.get(userId)
     const next =
       existing ??
       ({
         userId,
-        name: transaction.creator?.fullName?.trim() || 'Unknown',
-        avatarUrl: transaction.creator?.avatarUrl ?? null,
+        name,
+        avatarUrl: ownerId ? member?.profile?.avatarUrl ?? null : null,
         income: 0,
         expense: 0,
       } satisfies MemberIncomeExpenseDatum)
@@ -217,6 +264,20 @@ function buildMemberIncomeExpense(
   return Array.from(totals.values()).sort(
     (a, b) => b.income + b.expense - (a.income + a.expense),
   )
+}
+
+function transactionMatchesAccounts(
+  transaction: Transaction,
+  accountIds: Set<string>,
+): boolean {
+  if (transaction.type === 'transfer') {
+    return Boolean(
+      (transaction.fromAccountId && accountIds.has(transaction.fromAccountId)) ||
+        (transaction.toAccountId && accountIds.has(transaction.toAccountId)),
+    )
+  }
+
+  return Boolean(transaction.accountId && accountIds.has(transaction.accountId))
 }
 
 function getIstParts(input: string) {

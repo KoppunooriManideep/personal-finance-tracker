@@ -77,6 +77,7 @@ create table if not exists public.accounts (
                      check (type in ('cash', 'bank', 'credit_card', 'wallet')),
   opening_balance  bigint not null default 0,
   currency         text not null default 'INR',
+  owner_id         uuid references public.profiles (id) on delete set null,
   created_by       uuid references auth.users (id) on delete set null,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now(),
@@ -231,6 +232,8 @@ create index if not exists idx_family_members_family
   on public.family_members (family_id) where deleted_at is null;
 create index if not exists idx_accounts_family
   on public.accounts (family_id) where deleted_at is null;
+create index if not exists idx_accounts_owner
+  on public.accounts (owner_id) where deleted_at is null;
 create index if not exists idx_categories_family_kind
   on public.categories (family_id, kind) where deleted_at is null;
 create index if not exists idx_txn_family_date
@@ -415,6 +418,28 @@ begin
         updated_at = now();
 
   perform public.seed_default_categories(new.id);
+  return new;
+end;
+$$;
+
+-- ---- validate account owner -----------------------------------------------
+create or replace function public.validate_account_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.owner_id is not null and not exists (
+    select 1
+    from public.family_members fm
+    where fm.family_id = new.family_id
+      and fm.user_id = new.owner_id
+      and fm.deleted_at is null
+  ) then
+    raise exception 'Account owner must be an active member of the family';
+  end if;
+
   return new;
 end;
 $$;
@@ -614,6 +639,11 @@ drop trigger if exists trg_family_after_insert on public.families;
 create trigger trg_family_after_insert
   after insert on public.families
   for each row execute function public.handle_new_family();
+
+drop trigger if exists trg_validate_account_owner on public.accounts;
+create trigger trg_validate_account_owner
+  before insert or update of family_id, owner_id on public.accounts
+  for each row execute function public.validate_account_owner();
 
 drop trigger if exists trg_txn_validate on public.transactions;
 create trigger trg_txn_validate
@@ -829,6 +859,7 @@ with (security_invoker = on) as
 select
   a.id as account_id,
   a.family_id,
+  a.owner_id,
   a.name,
   a.type,
   a.opening_balance,

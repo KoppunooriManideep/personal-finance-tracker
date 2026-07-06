@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Users } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -22,6 +23,7 @@ import {
   useCreateAccount,
   useUpdateAccount,
 } from '@/features/accounts/hooks/use-account-mutations'
+import { useFamilyMembers } from '@/features/family/hooks/use-family-members'
 import type { AccountWithBalance } from '@/features/accounts/api/account-queries'
 
 interface AccountFormDialogProps {
@@ -34,6 +36,7 @@ interface AccountFormDialogProps {
 const emptyDefaults: AccountFormValues = {
   name: '',
   type: 'bank',
+  ownerId: null,
   openingBalance: 0,
 }
 
@@ -46,6 +49,7 @@ export function AccountFormDialog({
   const isEdit = Boolean(account)
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
+  const { data: familyMembers } = useFamilyMembers()
 
   const {
     register,
@@ -66,6 +70,7 @@ export function AccountFormDialog({
         ? {
             name: account.name,
             type: account.type,
+            ownerId: account.ownerId,
             openingBalance: paiseToRupees(account.openingBalance),
           }
         : emptyDefaults,
@@ -163,6 +168,80 @@ export function AccountFormDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label>Owner</Label>
+            <Controller
+              control={control}
+              name="ownerId"
+              render={({ field }) => (
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(null)}
+                    aria-pressed={field.value === null}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md border p-2.5 text-left text-sm transition-colors',
+                      field.value === null
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'hover:bg-accent',
+                    )}
+                  >
+                    <span className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                      <Users className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-medium">Shared / Family</span>
+                      <span className="text-muted-foreground block text-xs">
+                        Not assigned to one member
+                      </span>
+                    </span>
+                  </button>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(familyMembers ?? []).map((member) => {
+                      const name =
+                        member.profile?.fullName?.trim() ||
+                        member.displayName?.trim() ||
+                        'Unknown'
+                      const selected = field.value === member.userId
+
+                      return (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => field.onChange(member.userId)}
+                          aria-pressed={selected}
+                          className={cn(
+                            'flex min-w-0 items-center gap-2 rounded-md border p-2.5 text-left text-sm transition-colors',
+                            selected
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                              : 'hover:bg-accent',
+                          )}
+                        >
+                          <Avatar size="sm">
+                            <AvatarImage
+                              src={member.profile?.avatarUrl ?? undefined}
+                              alt={name}
+                            />
+                            <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                          </Avatar>
+                          <span className="truncate font-medium">
+                            {getFirstName(name)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            />
+            {errors.ownerId ? (
+              <p className="text-destructive text-sm">
+                {errors.ownerId.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="account-balance">Opening balance (₹)</Label>
             <Input
               id="account-balance"
@@ -202,4 +281,14 @@ export function AccountFormDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function getFirstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || 'Unknown'
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return name.slice(0, 2).toUpperCase()
 }
