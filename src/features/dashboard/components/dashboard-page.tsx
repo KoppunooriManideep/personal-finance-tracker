@@ -184,7 +184,7 @@ export function DashboardPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 px-3 gap-2 flex items-center justify-between flex-1 min-w-[120px] max-w-[200px]"
+                    className="h-9 px-3 gap-2 flex items-center justify-between flex-1 min-w-0"
                   >
                     <span className="flex items-center gap-1.5 truncate">
                       {selectedOwnerId === null ? (
@@ -244,7 +244,7 @@ export function DashboardPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="space-y-0 shrink-0 w-[130px]">
+              <div className="space-y-0 shrink-0 w-[150px]">
                 <Label htmlFor="dashboard-month-mobile" className="sr-only">
                   Month
                 </Label>

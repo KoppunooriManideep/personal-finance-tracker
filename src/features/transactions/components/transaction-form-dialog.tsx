@@ -145,7 +145,7 @@ export function TransactionFormDialog({
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="flex flex-col min-h-0 flex-1 gap-4 overflow-hidden">
-          <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-4 px-6">
             <div className="space-y-1.5">
               <Label>Type</Label>
               <Controller

@@ -464,7 +464,11 @@ function TransactionFiltersCard({
               ) : null}
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="rounded-t-xl max-h-[85vh] overflow-y-auto px-6 pb-6 pt-4">
+          <SheetContent
+            side="bottom"
+            className="rounded-t-xl max-h-[85vh] overflow-y-auto px-6 pb-6 pt-4"
+            onOpenAutoFocus={(event) => event.preventDefault()}
+          >
             <SheetHeader className="text-left mb-4">
               <SheetTitle>Filters</SheetTitle>
               <SheetDescription>
