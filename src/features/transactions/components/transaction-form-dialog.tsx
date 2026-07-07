@@ -134,7 +134,7 @@ export function TransactionFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onOpenAutoFocus={(event) => isEdit && event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
             {isEdit ? 'Edit transaction' : 'Add transaction'}
@@ -144,151 +144,153 @@ export function TransactionFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Type</Label>
-            <Controller
-              control={control}
-              name="type"
-              render={({ field }) => (
-                <div className="grid grid-cols-3 gap-2">
-                  {transactionTypes.map((option) => {
-                    const meta = transactionTypeMeta[option]
-                    const Icon = meta.icon
-                    const selected = field.value === option
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => field.onChange(option)}
-                        aria-pressed={selected}
-                        className={cn(
-                          'flex items-center justify-center gap-2 rounded-md border p-2.5 text-sm transition-colors',
-                          selected
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'hover:bg-accent',
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {meta.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={onSubmit} className="flex flex-col min-h-0 flex-1 gap-4 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1">
             <div className="space-y-1.5">
-              <Label htmlFor="transaction-amount">Amount (Rs)</Label>
-              <Input
-                id="transaction-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                inputMode="decimal"
-                placeholder="0.00"
-                {...register('amount', { valueAsNumber: true })}
+              <Label>Type</Label>
+              <Controller
+                control={control}
+                name="type"
+                render={({ field }) => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {transactionTypes.map((option) => {
+                      const meta = transactionTypeMeta[option]
+                      const Icon = meta.icon
+                      const selected = field.value === option
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => field.onChange(option)}
+                          aria-pressed={selected}
+                          className={cn(
+                            'flex items-center justify-center gap-2 rounded-md border p-2.5 text-sm transition-colors',
+                            selected
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                              : 'hover:bg-accent',
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {meta.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               />
-              {errors.amount ? (
-                <p className="text-destructive text-sm">
-                  {errors.amount.message}
-                </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="transaction-amount">Amount (Rs)</Label>
+                <Input
+                  id="transaction-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  {...register('amount', { valueAsNumber: true })}
+                />
+                {errors.amount ? (
+                  <p className="text-destructive text-sm">
+                    {errors.amount.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="transaction-date">Date</Label>
+                <Input
+                  id="transaction-date"
+                  type="date"
+                  {...register('occurredOn')}
+                />
+                {errors.occurredOn ? (
+                  <p className="text-destructive text-sm">
+                    {errors.occurredOn.message}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            {type === 'transfer' ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField
+                  id="from-account"
+                  label="From account"
+                  error={errors.fromAccountId?.message}
+                  {...register('fromAccountId')}
+                >
+                  <option value="">Select account</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </SelectField>
+
+                <SelectField
+                  id="to-account"
+                  label="To account"
+                  error={errors.toAccountId?.message}
+                  {...register('toAccountId')}
+                >
+                  <option value="">Select account</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </SelectField>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField
+                  id="transaction-account"
+                  label="Account"
+                  error={errors.accountId?.message}
+                  {...register('accountId')}
+                >
+                  <option value="">Select account</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </SelectField>
+
+                <SelectField
+                  id="transaction-category"
+                  label="Category"
+                  error={errors.categoryId?.message}
+                  {...register('categoryId')}
+                >
+                  <option value="">Select category</option>
+                  {availableCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </SelectField>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="transaction-note">Note</Label>
+              <Input
+                id="transaction-note"
+                placeholder="Optional"
+                autoComplete="off"
+                {...register('note')}
+              />
+              {errors.note ? (
+                <p className="text-destructive text-sm">{errors.note.message}</p>
               ) : null}
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="transaction-date">Date</Label>
-              <Input
-                id="transaction-date"
-                type="date"
-                {...register('occurredOn')}
-              />
-              {errors.occurredOn ? (
-                <p className="text-destructive text-sm">
-                  {errors.occurredOn.message}
-                </p>
-              ) : null}
-            </div>
           </div>
 
-          {type === 'transfer' ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SelectField
-                id="from-account"
-                label="From account"
-                error={errors.fromAccountId?.message}
-                {...register('fromAccountId')}
-              >
-                <option value="">Select account</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </SelectField>
-
-              <SelectField
-                id="to-account"
-                label="To account"
-                error={errors.toAccountId?.message}
-                {...register('toAccountId')}
-              >
-                <option value="">Select account</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </SelectField>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SelectField
-                id="transaction-account"
-                label="Account"
-                error={errors.accountId?.message}
-                {...register('accountId')}
-              >
-                <option value="">Select account</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </SelectField>
-
-              <SelectField
-                id="transaction-category"
-                label="Category"
-                error={errors.categoryId?.message}
-                {...register('categoryId')}
-              >
-                <option value="">Select category</option>
-                {availableCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </SelectField>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="transaction-note">Note</Label>
-            <Input
-              id="transaction-note"
-              placeholder="Optional"
-              autoComplete="off"
-              {...register('note')}
-            />
-            {errors.note ? (
-              <p className="text-destructive text-sm">{errors.note.message}</p>
-            ) : null}
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-2 border-t">
             <Button
               type="button"
               variant="outline"

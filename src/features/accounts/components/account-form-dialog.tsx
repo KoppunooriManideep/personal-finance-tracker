@@ -99,7 +99,7 @@ export function AccountFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onOpenAutoFocus={(event) => isEdit && event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit account' : 'Add account'}</DialogTitle>
           <DialogDescription>
@@ -109,161 +109,163 @@ export function AccountFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="account-name">Name</Label>
-            <Input
-              id="account-name"
-              placeholder="e.g. HDFC Savings"
-              autoComplete="off"
-              {...register('name')}
-            />
-            {errors.name ? (
-              <p className="text-destructive text-sm">{errors.name.message}</p>
-            ) : null}
-          </div>
+        <form onSubmit={onSubmit} className="flex flex-col min-h-0 flex-1 gap-4 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="account-name">Name</Label>
+              <Input
+                id="account-name"
+                placeholder="e.g. HDFC Savings"
+                autoComplete="off"
+                {...register('name')}
+              />
+              {errors.name ? (
+                <p className="text-destructive text-sm">{errors.name.message}</p>
+              ) : null}
+            </div>
 
-          <div className="space-y-1.5">
-            <Label>Type</Label>
-            <Controller
-              control={control}
-              name="type"
-              render={({ field }) => (
-                <div className="grid grid-cols-2 gap-2">
-                  {accountTypes.map((type) => {
-                    const meta = accountTypeMeta[type]
-                    const Icon = meta.icon
-                    const selected = field.value === type
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => field.onChange(type)}
-                        aria-pressed={selected}
-                        className={cn(
-                          'flex items-center gap-2 rounded-md border p-2.5 text-sm transition-colors',
-                          selected
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'hover:bg-accent',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'flex h-7 w-7 items-center justify-center rounded-md',
-                            meta.badgeClassName,
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        {meta.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            />
-            {errors.type ? (
-              <p className="text-destructive text-sm">{errors.type.message}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Owner</Label>
-            <Controller
-              control={control}
-              name="ownerId"
-              render={({ field }) => (
-                <div className="grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => field.onChange(null)}
-                    aria-pressed={field.value === null}
-                    className={cn(
-                      'flex items-center gap-2 rounded-md border p-2.5 text-left text-sm transition-colors',
-                      field.value === null
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'hover:bg-accent',
-                    )}
-                  >
-                    <span className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                      <Users className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-medium">Shared / Family</span>
-                      <span className="text-muted-foreground block text-xs">
-                        Not assigned to one member
-                      </span>
-                    </span>
-                  </button>
-
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(familyMembers ?? []).map((member) => {
-                      const name =
-                        member.profile?.fullName?.trim() ||
-                        member.displayName?.trim() ||
-                        'Unknown'
-                      const selected = field.value === member.userId
-
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <Controller
+                control={control}
+                name="type"
+                render={({ field }) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {accountTypes.map((type) => {
+                      const meta = accountTypeMeta[type]
+                      const Icon = meta.icon
+                      const selected = field.value === type
                       return (
                         <button
-                          key={member.id}
+                          key={type}
                           type="button"
-                          onClick={() => field.onChange(member.userId)}
+                          onClick={() => field.onChange(type)}
                           aria-pressed={selected}
                           className={cn(
-                            'flex min-w-0 items-center gap-2 rounded-md border p-2.5 text-left text-sm transition-colors',
+                            'flex items-center gap-2 rounded-md border p-2.5 text-sm transition-colors',
                             selected
                               ? 'border-primary bg-primary/5 ring-1 ring-primary'
                               : 'hover:bg-accent',
                           )}
                         >
-                          <Avatar size="sm">
-                            <AvatarImage
-                              src={member.profile?.avatarUrl ?? undefined}
-                              alt={name}
-                            />
-                            <AvatarFallback>{getInitials(name)}</AvatarFallback>
-                          </Avatar>
-                          <span className="truncate font-medium">
-                            {getFirstName(name)}
+                          <span
+                            className={cn(
+                              'flex h-7 w-7 items-center justify-center rounded-md',
+                              meta.badgeClassName,
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
                           </span>
+                          {meta.label}
                         </button>
                       )
                     })}
                   </div>
-                </div>
+                )}
+              />
+              {errors.type ? (
+                <p className="text-destructive text-sm">{errors.type.message}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Owner</Label>
+              <Controller
+                control={control}
+                name="ownerId"
+                render={({ field }) => (
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => field.onChange(null)}
+                      aria-pressed={field.value === null}
+                      className={cn(
+                        'flex items-center gap-2 rounded-md border p-2.5 text-left text-sm transition-colors',
+                        field.value === null
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                          : 'hover:bg-accent',
+                      )}
+                    >
+                      <span className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                        <Users className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block font-medium">Shared / Family</span>
+                        <span className="text-muted-foreground block text-xs">
+                          Not assigned to one member
+                        </span>
+                      </span>
+                    </button>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(familyMembers ?? []).map((member) => {
+                        const name =
+                          member.profile?.fullName?.trim() ||
+                          member.displayName?.trim() ||
+                          'Unknown'
+                        const selected = field.value === member.userId
+
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => field.onChange(member.userId)}
+                            aria-pressed={selected}
+                            className={cn(
+                              'flex min-w-0 items-center gap-2 rounded-md border p-2.5 text-left text-sm transition-colors',
+                              selected
+                                ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                : 'hover:bg-accent',
+                            )}
+                          >
+                            <Avatar size="sm">
+                              <AvatarImage
+                                src={member.profile?.avatarUrl ?? undefined}
+                                alt={name}
+                              />
+                              <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate font-medium">
+                              {getFirstName(name)}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              />
+              {errors.ownerId ? (
+                <p className="text-destructive text-sm">
+                  {errors.ownerId.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="account-balance">Opening balance (₹)</Label>
+              <Input
+                id="account-balance"
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="0.00"
+                {...register('openingBalance', { valueAsNumber: true })}
+              />
+              {errors.openingBalance ? (
+                <p className="text-destructive text-sm">
+                  {errors.openingBalance.message}
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Current balance in this account today. Use a negative value for
+                  credit card dues.
+                </p>
               )}
-            />
-            {errors.ownerId ? (
-              <p className="text-destructive text-sm">
-                {errors.ownerId.message}
-              </p>
-            ) : null}
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="account-balance">Opening balance (₹)</Label>
-            <Input
-              id="account-balance"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              placeholder="0.00"
-              {...register('openingBalance', { valueAsNumber: true })}
-            />
-            {errors.openingBalance ? (
-              <p className="text-destructive text-sm">
-                {errors.openingBalance.message}
-              </p>
-            ) : (
-              <p className="text-muted-foreground text-xs">
-                Current balance in this account today. Use a negative value for
-                credit card dues.
-              </p>
-            )}
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-2 border-t">
             <Button
               type="button"
               variant="outline"

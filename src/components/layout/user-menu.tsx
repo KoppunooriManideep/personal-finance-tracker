@@ -1,4 +1,5 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings, Tags } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
+import { paths } from '@/config/paths'
 
 /** Returns up to two uppercase initials from a name or email. */
 function getInitials(value: string): string {
@@ -54,7 +56,7 @@ export function UserMenu() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="min-w-40 w-auto">
         <DropdownMenuLabel className="flex flex-col">
           <span className="truncate font-medium">{name}</span>
           <span className="text-muted-foreground truncate text-xs font-normal">
@@ -62,7 +64,20 @@ export function UserMenu() {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut}>
+        <DropdownMenuItem asChild>
+          <Link to={paths.categories} className="flex w-full items-center gap-2 cursor-pointer">
+            <Tags className="h-4 w-4" />
+            <span>Categories</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to={paths.settings} className="flex w-full items-center gap-2 cursor-pointer">
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
           <LogOut className="h-4 w-4" />
           Sign out
         </DropdownMenuItem>

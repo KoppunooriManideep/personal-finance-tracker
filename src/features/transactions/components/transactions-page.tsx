@@ -280,20 +280,20 @@ function SummaryCards({ totals }: SummaryCardsProps) {
         const Icon = meta.icon
         return (
           <Card key={type}>
-            <CardContent className="flex items-center gap-2 p-2 sm:gap-3 sm:p-4">
+            <CardContent className="flex flex-col items-start gap-1 p-2 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
               <div
                 className={cn(
-                  'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg',
+                  'flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg',
                   meta.badgeClassName,
                 )}
               >
                 <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 w-full">
                 <p className="text-muted-foreground text-[10px] sm:text-xs truncate">{meta.label}</p>
                 <p
                   className={cn(
-                    'text-xs sm:text-sm md:text-base font-semibold tabular-nums truncate',
+                    'text-[10px] min-[360px]:text-xs sm:text-sm md:text-base font-semibold tabular-nums',
                     meta.amountClassName,
                   )}
                 >

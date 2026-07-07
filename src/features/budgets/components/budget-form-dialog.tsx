@@ -103,63 +103,65 @@ export function BudgetFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="budget-category">Expense category</Label>
-            <select
-              id="budget-category"
-              className={selectClassName}
-              {...register('categoryId')}
-            >
-              <option value="">Select category</option>
-              {expenseCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            {errors.categoryId ? (
-              <p className="text-destructive text-sm">
-                {errors.categoryId.message}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={onSubmit} className="flex flex-col min-h-0 flex-1 gap-4 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1">
             <div className="space-y-1.5">
-              <Label htmlFor="budget-amount">Budget amount (Rs)</Label>
-              <Input
-                id="budget-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                inputMode="decimal"
-                placeholder="0.00"
-                {...register('amount', { valueAsNumber: true })}
-              />
-              {errors.amount ? (
+              <Label htmlFor="budget-category">Expense category</Label>
+              <select
+                id="budget-category"
+                className={selectClassName}
+                {...register('categoryId')}
+              >
+                <option value="">Select category</option>
+                {expenseCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {errors.categoryId ? (
                 <p className="text-destructive text-sm">
-                  {errors.amount.message}
+                  {errors.categoryId.message}
                 </p>
               ) : null}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="budget-month">Month</Label>
-              <Input
-                id="budget-month"
-                type="month"
-                {...register('periodMonth')}
-              />
-              {errors.periodMonth ? (
-                <p className="text-destructive text-sm">
-                  {errors.periodMonth.message}
-                </p>
-              ) : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="budget-amount">Budget amount (Rs)</Label>
+                <Input
+                  id="budget-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  {...register('amount', { valueAsNumber: true })}
+                />
+                {errors.amount ? (
+                  <p className="text-destructive text-sm">
+                    {errors.amount.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="budget-month">Month</Label>
+                <Input
+                  id="budget-month"
+                  type="month"
+                  {...register('periodMonth')}
+                />
+                {errors.periodMonth ? (
+                  <p className="text-destructive text-sm">
+                    {errors.periodMonth.message}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-2 border-t">
             <Button
               type="button"
               variant="outline"

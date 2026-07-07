@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  Check,
   ChevronDown,
   Info,
   LayoutDashboard,
@@ -34,15 +35,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { formatMonthYear } from '@/lib/date'
 import { formatPaise } from '@/lib/money'
@@ -123,13 +133,14 @@ export function DashboardPage() {
         title="Dashboard"
         description="Income, expenses and recent activity at a glance."
         actions={
-          <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center">
-            <div className="flex items-center gap-1 rounded-lg border bg-muted p-0.5 overflow-x-auto scrollbar-none whitespace-nowrap max-sm:-mx-4 max-sm:px-4 snap-x max-w-full shrink-0">
+          <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center sm:w-auto">
+            {/* Desktop View Switcher (Chips) */}
+            <div className="hidden sm:flex items-center gap-1 rounded-lg border bg-muted p-0.5 whitespace-nowrap shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedOwnerId(null)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all snap-start',
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all cursor-pointer',
                   selectedOwnerId === null
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -148,7 +159,7 @@ export function DashboardPage() {
                     type="button"
                     onClick={() => setSelectedOwnerId(member.userId)}
                     className={cn(
-                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all snap-start',
+                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer',
                       isSelected
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground',
@@ -166,7 +177,91 @@ export function DashboardPage() {
               })}
             </div>
 
-            <div className="space-y-1.5 shrink-0 max-sm:w-[140px]">
+            {/* Mobile View Switcher (Dropdown) */}
+            <div className="flex sm:hidden items-center justify-between w-full gap-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3 gap-2 flex items-center justify-between flex-1 min-w-[120px] max-w-[200px]"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      {selectedOwnerId === null ? (
+                        <>
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>Family</span>
+                        </>
+                      ) : (
+                        <>
+                          <Avatar size="sm" className="h-4 w-4">
+                            <AvatarImage src={selectedMember?.profile?.avatarUrl ?? undefined} alt={selectedMember?.profile?.fullName || ''} />
+                            <AvatarFallback className="text-[9px] font-bold">
+                              {getInitials(selectedMember?.profile?.fullName || selectedMember?.displayName || '')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{getFirstName(selectedMember?.profile?.fullName || selectedMember?.displayName || '')}</span>
+                        </>
+                      )}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[150px]">
+                  <DropdownMenuItem
+                    onClick={() => setSelectedOwnerId(null)}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Family</span>
+                    </span>
+                    {selectedOwnerId === null && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </DropdownMenuItem>
+                  {familyMembers?.map((member) => {
+                    const isSelected = selectedOwnerId === member.userId
+                    const name = member.profile?.fullName || member.displayName || 'Unknown'
+                    const firstName = getFirstName(name)
+                    return (
+                      <DropdownMenuItem
+                        key={member.id}
+                        onClick={() => setSelectedOwnerId(member.userId)}
+                        className="flex items-center justify-between cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Avatar size="sm" className="h-4 w-4">
+                            <AvatarImage src={member.profile?.avatarUrl ?? undefined} alt={name} />
+                            <AvatarFallback className="text-[9px] font-bold">
+                              {getInitials(name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{firstName}</span>
+                        </span>
+                        {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="space-y-0 shrink-0 w-[130px]">
+                <Label htmlFor="dashboard-month-mobile" className="sr-only">
+                  Month
+                </Label>
+                <Input
+                  id="dashboard-month-mobile"
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(event) => {
+                    if (event.target.value) setSelectedMonth(event.target.value)
+                  }}
+                  className="h-9 w-full"
+                />
+              </div>
+            </div>
+
+            {/* Desktop Month Selector */}
+            <div className="hidden sm:block space-y-1.5 shrink-0">
               <Label htmlFor="dashboard-month" className="sr-only">
                 Month
               </Label>
@@ -177,7 +272,7 @@ export function DashboardPage() {
                 onChange={(event) => {
                   if (event.target.value) setSelectedMonth(event.target.value)
                 }}
-                className="w-full sm:w-[140px]"
+                className="w-[140px]"
               />
             </div>
           </div>
@@ -391,7 +486,7 @@ function SummaryCards({
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {cards.map((card) => {
           const Icon = card.icon
           const isBalanceCard = card.id === 'balance'
@@ -422,12 +517,12 @@ function SummaryCards({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-muted-foreground text-xs sm:text-sm truncate">
+                      <p className="text-muted-foreground text-xs sm:text-sm font-medium whitespace-normal">
                         {card.label}
                       </p>
                       {card.tooltip ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        <Popover>
+                          <PopoverTrigger asChild>
                             <button
                               type="button"
                               className="text-muted-foreground hover:text-foreground inline-flex rounded-full transition-colors"
@@ -435,9 +530,11 @@ function SummaryCards({
                             >
                               <Info className="h-3.5 w-3.5" />
                             </button>
-                          </TooltipTrigger>
-                          <TooltipContent>{card.tooltip}</TooltipContent>
-                        </Tooltip>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 text-xs p-3" side="top">
+                            {card.tooltip}
+                          </PopoverContent>
+                        </Popover>
                       ) : null}
                     </div>
                     <p
@@ -448,7 +545,7 @@ function SummaryCards({
                     >
                       {formatPaise(card.value)}
                     </p>
-                    <p className="text-muted-foreground text-2xs sm:text-xs truncate">
+                    <p className="text-muted-foreground text-2xs sm:text-xs whitespace-normal">
                       {card.subtitle}
                     </p>
                   </div>
@@ -636,23 +733,44 @@ function ExpenseByCategoryChart({ data }: { data: CategoryExpenseDatum[] }) {
         {data.length === 0 ? (
           <ChartEmptyState text="No expenses this month" />
         ) : (
-          <div className="h-60 md:h-72">
+          <div className="h-[260px] md:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 0, right: 0, bottom: 10, left: 0 }}>
                 <Pie
                   data={data}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius={58}
-                  outerRadius={92}
+                  innerRadius="50%"
+                  outerRadius="70%"
                   paddingAngle={2}
                 >
                   {data.map((entry) => (
                     <Cell key={entry.categoryId} fill={entry.color} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value) => formatPaise(Number(value))} />
-                <Legend />
+                <RechartsTooltip
+                  formatter={(value) => formatPaise(Number(value))}
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    borderColor: 'hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    color: 'hsl(var(--popover-foreground))',
+                    fontSize: '12px',
+                  }}
+                  itemStyle={{
+                    color: 'hsl(var(--popover-foreground))',
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  iconSize={8}
+                  wrapperStyle={{
+                    fontSize: '11px',
+                    paddingTop: '8px',
+                    lineHeight: '1.2',
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -681,7 +799,19 @@ function MonthlyIncomeExpenseChart({ data }: { data: MonthlyDatum[] }) {
                   formatPaise(Number(value), { decimals: false })
                 }
               />
-              <RechartsTooltip formatter={(value) => formatPaise(Number(value))} />
+              <RechartsTooltip
+                formatter={(value) => formatPaise(Number(value))}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  borderColor: 'hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                  color: 'hsl(var(--popover-foreground))',
+                  fontSize: '12px',
+                }}
+                itemStyle={{
+                  color: 'hsl(var(--popover-foreground))',
+                }}
+              />
               <Legend />
               <Bar dataKey="income" name="Income" fill="#16a34a" radius={4} />
               <Bar dataKey="expense" name="Expense" fill="#e11d48" radius={4} />
@@ -712,7 +842,19 @@ function SpendingTrendChart({ data }: { data: TrendDatum[] }) {
                   formatPaise(Number(value), { decimals: false })
                 }
               />
-              <RechartsTooltip formatter={(value) => formatPaise(Number(value))} />
+              <RechartsTooltip
+                formatter={(value) => formatPaise(Number(value))}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  borderColor: 'hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                  color: 'hsl(var(--popover-foreground))',
+                  fontSize: '12px',
+                }}
+                itemStyle={{
+                  color: 'hsl(var(--popover-foreground))',
+                }}
+              />
               <Line
                 type="monotone"
                 dataKey="expense"
