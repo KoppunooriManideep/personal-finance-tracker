@@ -94,7 +94,7 @@ export function BudgetsPage() {
         description="Set monthly limits per expense category."
         actions={
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="space-y-0 flex-1 sm:flex-initial">
+            <div className="space-y-0 w-[150px] shrink-0">
               <Label htmlFor="budget-page-month" className="sr-only">
                 Month
               </Label>
@@ -105,17 +105,17 @@ export function BudgetsPage() {
                 onChange={(event) => {
                   if (event.target.value) setSelectedMonth(event.target.value)
                 }}
-                className="w-full sm:w-[140px] h-10"
+                className="w-full h-10"
               />
             </div>
             {canManage ? (
               <Button
                 onClick={openCreate}
                 disabled={expenseCategories.length === 0}
-                className="h-10 shrink-0"
+                className="h-10 flex-1 sm:flex-initial justify-center shrink-0"
               >
                 <Plus className="h-4 w-4" />
-                Add budget
+                <span>Add budget</span>
               </Button>
             ) : null}
           </div>
