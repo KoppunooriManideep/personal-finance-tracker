@@ -26,6 +26,15 @@ import {
   useCreateTransaction,
   useUpdateTransaction,
 } from '@/features/transactions/hooks/use-transaction-mutations'
+import { useFamilyMembers } from '@/features/family/hooks/use-family-members'
+import { GroupedAccountOptions } from '@/features/accounts/components/grouped-account-options'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Transaction } from '@/features/transactions/api/transaction-queries'
 import type { AccountWithBalance } from '@/features/accounts/api/account-queries'
 import type { Category } from '@/features/categories/api/category-queries'
@@ -60,6 +69,7 @@ export function TransactionFormDialog({
   const isEdit = Boolean(transaction)
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
+  const { data: familyMembers } = useFamilyMembers()
 
   const {
     register,
@@ -216,63 +226,83 @@ export function TransactionFormDialog({
 
             {type === 'transfer' ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField
-                  id="from-account"
-                  label="From account"
-                  error={errors.fromAccountId?.message}
-                  {...register('fromAccountId')}
-                >
-                  <option value="">Select account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </SelectField>
+                <Controller
+                  control={control}
+                  name="fromAccountId"
+                  render={({ field }) => (
+                    <CustomSelectField
+                      id="from-account"
+                      label="From account"
+                      error={errors.fromAccountId?.message}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select account"
+                    >
+                      <SelectItem value="none">Select account</SelectItem>
+                      <GroupedAccountOptions accounts={accounts} familyMembers={familyMembers} />
+                    </CustomSelectField>
+                  )}
+                />
 
-                <SelectField
-                  id="to-account"
-                  label="To account"
-                  error={errors.toAccountId?.message}
-                  {...register('toAccountId')}
-                >
-                  <option value="">Select account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </SelectField>
+                <Controller
+                  control={control}
+                  name="toAccountId"
+                  render={({ field }) => (
+                    <CustomSelectField
+                      id="to-account"
+                      label="To account"
+                      error={errors.toAccountId?.message}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select account"
+                    >
+                      <SelectItem value="none">Select account</SelectItem>
+                      <GroupedAccountOptions accounts={accounts} familyMembers={familyMembers} />
+                    </CustomSelectField>
+                  )}
+                />
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField
-                  id="transaction-account"
-                  label="Account"
-                  error={errors.accountId?.message}
-                  {...register('accountId')}
-                >
-                  <option value="">Select account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </SelectField>
+                <Controller
+                  control={control}
+                  name="accountId"
+                  render={({ field }) => (
+                    <CustomSelectField
+                      id="transaction-account"
+                      label="Account"
+                      error={errors.accountId?.message}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select account"
+                    >
+                      <SelectItem value="none">Select account</SelectItem>
+                      <GroupedAccountOptions accounts={accounts} familyMembers={familyMembers} />
+                    </CustomSelectField>
+                  )}
+                />
 
-                <SelectField
-                  id="transaction-category"
-                  label="Category"
-                  error={errors.categoryId?.message}
-                  {...register('categoryId')}
-                >
-                  <option value="">Select category</option>
-                  {availableCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </SelectField>
+                <Controller
+                  control={control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <CustomSelectField
+                      id="transaction-category"
+                      label="Category"
+                      error={errors.categoryId?.message}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select category"
+                    >
+                      <SelectItem value="none">Select category</SelectItem>
+                      {availableCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </CustomSelectField>
+                  )}
+                />
               </div>
             )}
 
@@ -309,35 +339,37 @@ export function TransactionFormDialog({
     </Dialog>
   )
 }
-
-interface SelectFieldProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement> {
+interface CustomSelectFieldProps {
   id: string
   label: string
   error?: string
+  value: string | undefined
+  onValueChange: (value: string) => void
+  placeholder?: string
+  children: React.ReactNode
 }
 
-function SelectField({
+function CustomSelectField({
   id,
   label,
   error,
+  value,
+  onValueChange,
+  placeholder,
   children,
-  className,
-  ...props
-}: SelectFieldProps) {
+}: CustomSelectFieldProps) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <select
-        id={id}
-        className={cn(
-          'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-          className,
-        )}
-        {...props}
+      <Select
+        value={value || 'none'}
+        onValueChange={(val) => onValueChange(val === 'none' ? '' : val)}
       >
-        {children}
-      </select>
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </div>
   )

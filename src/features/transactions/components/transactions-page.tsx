@@ -30,6 +30,14 @@ import { useTransactions } from '@/features/transactions/hooks/use-transactions'
 import { useDeleteTransaction } from '@/features/transactions/hooks/use-transaction-mutations'
 import { TransactionFormDialog } from '@/features/transactions/components/transaction-form-dialog'
 import { TransactionCard } from '@/features/transactions/components/transaction-card'
+import { GroupedAccountOptions } from '@/features/accounts/components/grouped-account-options'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   transactionTypeMeta,
 } from '@/features/transactions/config'
@@ -311,7 +319,7 @@ function SummaryCards({ totals }: SummaryCardsProps) {
 interface TransactionFiltersCardProps {
   filters: TransactionFilters
   onFiltersChange: (filters: TransactionFilters) => void
-  accounts: { id: string; name: string }[]
+  accounts: AccountWithBalance[]
   categories: { id: string; name: string; kind: 'income' | 'expense' }[]
   members: FamilyMember[]
 }
@@ -365,70 +373,79 @@ function TransactionFiltersCard({
             />
           </FilterField>
           <FilterField label="Type">
-            <select
-              className={selectClassName}
-              value={filters.type ?? ''}
-              onChange={(event) =>
+            <Select
+              value={filters.type || 'all'}
+              onValueChange={(val) =>
                 update({
-                  type: (event.target.value || undefined) as
-                    | TransactionType
-                    | undefined,
-                  categoryId:
-                    event.target.value === 'transfer' ? '' : filters.categoryId,
+                  type: val === 'all' ? undefined : (val as TransactionType),
+                  categoryId: val === 'transfer' ? '' : filters.categoryId,
                 })
               }
             >
-              <option value="">All</option>
-              {transactionTypes.map((type) => (
-                <option key={type} value={type}>
-                  {transactionTypeMeta[type].label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {transactionTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {transactionTypeMeta[type].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FilterField>
           <FilterField label="Account">
-            <select
-              className={selectClassName}
-              value={filters.accountId ?? ''}
-              onChange={(event) => update({ accountId: event.target.value })}
+            <Select
+              value={filters.accountId || 'all'}
+              onValueChange={(val) => update({ accountId: val === 'all' ? '' : val })}
             >
-              <option value="">All accounts</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All accounts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All accounts</SelectItem>
+                <GroupedAccountOptions accounts={accounts} familyMembers={members} />
+              </SelectContent>
+            </Select>
           </FilterField>
           <FilterField label="Category">
-            <select
-              className={selectClassName}
-              value={filters.categoryId ?? ''}
+            <Select
+              value={filters.categoryId || 'all'}
               disabled={filters.type === 'transfer'}
-              onChange={(event) => update({ categoryId: event.target.value })}
+              onValueChange={(val) => update({ categoryId: val === 'all' ? '' : val })}
             >
-              <option value="">All categories</option>
-              {categoryOptions.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categoryOptions.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FilterField>
           <FilterField label="Account Owner">
-            <select
-              className={selectClassName}
-              value={filters.memberId ?? ''}
-              onChange={(event) => update({ memberId: event.target.value })}
+            <Select
+              value={filters.memberId || 'all'}
+              onValueChange={(val) => update({ memberId: val === 'all' ? '' : val })}
             >
-              <option value="">All members</option>
-              <option value="shared">Shared / Family</option>
-              {members.map((member) => (
-                <option key={member.id} value={member.userId}>
-                  {getMemberDisplayName(member)}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All members" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All members</SelectItem>
+                <SelectItem value="shared">Shared / Family</SelectItem>
+                {members.map((member) => (
+                  <SelectItem key={member.id} value={member.userId}>
+                    {getMemberDisplayName(member)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FilterField>
           <FilterField label="Search">
             <Input
@@ -493,70 +510,79 @@ function TransactionFiltersCard({
                 />
               </FilterField>
               <FilterField label="Type">
-                <select
-                  className={cn(selectClassName, 'h-10')}
-                  value={filters.type ?? ''}
-                  onChange={(event) =>
+                <Select
+                  value={filters.type || 'all'}
+                  onValueChange={(val) =>
                     update({
-                      type: (event.target.value || undefined) as
-                        | TransactionType
-                        | undefined,
-                      categoryId:
-                        event.target.value === 'transfer' ? '' : filters.categoryId,
+                      type: val === 'all' ? undefined : (val as TransactionType),
+                      categoryId: val === 'transfer' ? '' : filters.categoryId,
                     })
                   }
                 >
-                  <option value="">All Types</option>
-                  {transactionTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {transactionTypeMeta[type].label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {transactionTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {transactionTypeMeta[type].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FilterField>
               <FilterField label="Account">
-                <select
-                  className={cn(selectClassName, 'h-10')}
-                  value={filters.accountId ?? ''}
-                  onChange={(event) => update({ accountId: event.target.value })}
+                <Select
+                  value={filters.accountId || 'all'}
+                  onValueChange={(val) => update({ accountId: val === 'all' ? '' : val })}
                 >
-                  <option value="">All accounts</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="All accounts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All accounts</SelectItem>
+                    <GroupedAccountOptions accounts={accounts} familyMembers={members} />
+                  </SelectContent>
+                </Select>
               </FilterField>
               <FilterField label="Category">
-                <select
-                  className={cn(selectClassName, 'h-10')}
-                  value={filters.categoryId ?? ''}
+                <Select
+                  value={filters.categoryId || 'all'}
                   disabled={filters.type === 'transfer'}
-                  onChange={(event) => update({ categoryId: event.target.value })}
+                  onValueChange={(val) => update({ categoryId: val === 'all' ? '' : val })}
                 >
-                  <option value="">All categories</option>
-                  {categoryOptions.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categoryOptions.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FilterField>
               <FilterField label="Account Owner">
-                <select
-                  className={cn(selectClassName, 'h-10')}
-                  value={filters.memberId ?? ''}
-                  onChange={(event) => update({ memberId: event.target.value })}
+                <Select
+                  value={filters.memberId || 'all'}
+                  onValueChange={(val) => update({ memberId: val === 'all' ? '' : val })}
                 >
-                  <option value="">All members</option>
-                  <option value="shared">Shared / Family</option>
-                  {members.map((member) => (
-                    <option key={member.id} value={member.userId}>
-                      {getMemberDisplayName(member)}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="All members" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All members</SelectItem>
+                    <SelectItem value="shared">Shared / Family</SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={member.userId}>
+                        {getMemberDisplayName(member)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FilterField>
             </div>
             <SheetFooter className="mt-6">
@@ -676,6 +702,3 @@ function toDateInputValue(input: string): string {
   const day = parts.find((part) => part.type === 'day')?.value
   return `${year}-${month}-${day}`
 }
-
-const selectClassName =
-  'border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
