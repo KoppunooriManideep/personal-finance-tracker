@@ -51,6 +51,18 @@ export function formatMonthYear(input: DateInput): string {
   return monthYearFormatter.format(toDate(input))
 }
 
+/** Return the current `YYYY-MM` (IST) — the value a `type="month"` input uses. */
+export function getCurrentIstMonth(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(new Date())
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  return `${year}-${month}`
+}
+
 /**
  * Return `YYYY-MM-DD` for the first day of the given date's month (IST).
  * Handy for the budgets `period_month` column.

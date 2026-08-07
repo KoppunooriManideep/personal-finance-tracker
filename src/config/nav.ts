@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import {
   ArrowLeftRight,
   Coins,
+  FileBarChart,
   LayoutDashboard,
   PiggyBank,
   Settings,
@@ -24,6 +25,7 @@ export const navItems: NavItem[] = [
   { label: 'Accounts', to: paths.accounts, icon: Wallet },
   { label: 'Chits', to: paths.chits, icon: Coins },
   { label: 'Budgets', to: paths.budgets, icon: PiggyBank },
+  { label: 'Reports', to: paths.reports, icon: FileBarChart },
   { label: 'Categories', to: paths.categories, icon: Tags },
   { label: 'Settings', to: paths.settings, icon: Settings },
 ]
@@ -35,5 +37,6 @@ export const navItems: NavItem[] = [
 export const moreNavItems: NavItem[] = [
   { label: 'Chits', to: paths.chits, icon: Coins },
   { label: 'Budgets', to: paths.budgets, icon: PiggyBank },
+  { label: 'Reports', to: paths.reports, icon: FileBarChart },
   { label: 'Categories', to: paths.categories, icon: Tags },
 ]

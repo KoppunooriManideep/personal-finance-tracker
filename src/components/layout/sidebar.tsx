@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 /** Persistent desktop sidebar (hidden on mobile — see BottomNav). */
 export function Sidebar() {
   return (
-    <aside className="bg-card fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r md:flex">
+    <aside className="bg-card fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r md:flex print:hidden">
       <div className="flex h-14 items-center gap-2 border-b px-4">
         <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-md">
           <Wallet className="h-5 w-5" />

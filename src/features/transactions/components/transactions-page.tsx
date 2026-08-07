@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Download,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/page-header'
 import { EmptyState } from '@/components/common/empty-state'
@@ -28,6 +34,11 @@ import { useAccounts } from '@/features/accounts/hooks/use-accounts'
 import { useCategories } from '@/features/categories/hooks/use-categories'
 import { useTransactions } from '@/features/transactions/hooks/use-transactions'
 import { useDeleteTransaction } from '@/features/transactions/hooks/use-transaction-mutations'
+import {
+  buildTransactionsCsv,
+  transactionsCsvFilename,
+} from '@/features/transactions/export'
+import { downloadCsv } from '@/lib/csv'
 import { TransactionFormDialog } from '@/features/transactions/components/transaction-form-dialog'
 import { TransactionCard } from '@/features/transactions/components/transaction-card'
 import { GroupedAccountOptions } from '@/features/accounts/components/grouped-account-options'
@@ -148,18 +159,42 @@ export function TransactionsPage() {
     }
   }
 
+  const handleExport = () => {
+    if (filteredTransactions.length === 0) {
+      toast.error('No transactions to export')
+      return
+    }
+    const csv = buildTransactionsCsv(filteredTransactions, {
+      accountsById,
+      categoriesById,
+    })
+    downloadCsv(transactionsCsvFilename(), csv)
+    toast.success(`Exported ${filteredTransactions.length} transactions`)
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Transactions"
         description="Income, expenses and transfers. Transfers never affect category reports."
         actions={
-          canManage ? (
-            <Button onClick={openCreate} disabled={(accounts ?? []).length < 1}>
-              <Plus className="h-4 w-4" />
-              Add transaction
-            </Button>
-          ) : undefined
+          <>
+            {filteredTransactions.length > 0 ? (
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            ) : null}
+            {canManage ? (
+              <Button
+                onClick={openCreate}
+                disabled={(accounts ?? []).length < 1}
+              >
+                <Plus className="h-4 w-4" />
+                Add transaction
+              </Button>
+            ) : null}
+          </>
         }
       />
 

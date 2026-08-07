@@ -35,7 +35,7 @@ export function BottomNav() {
   return (
     <>
       <nav
-        className="bg-card fixed inset-x-0 bottom-0 z-30 border-t md:hidden"
+        className="bg-card fixed inset-x-0 bottom-0 z-30 border-t md:hidden print:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="grid h-16 grid-cols-5 items-center justify-items-center">

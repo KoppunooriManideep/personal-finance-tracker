@@ -13,6 +13,7 @@ export const paths = {
   chitDetail: '/chits/:id',
   categories: '/categories',
   budgets: '/budgets',
+  reports: '/reports',
   recurring: '/recurring',
   settings: '/settings',
 } as const

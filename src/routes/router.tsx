@@ -11,6 +11,7 @@ import { ChitsPage } from '@/features/chits/components/chits-page'
 import { ChitDetailPage } from '@/features/chits/components/chit-detail-page'
 import { CategoriesPage } from '@/features/categories/components/categories-page'
 import { BudgetsPage } from '@/features/budgets/components/budgets-page'
+import { ReportsPage } from '@/features/reports/components/reports-page'
 import { SettingsPage } from '@/features/settings/components/settings-page'
 import { paths } from '@/config/paths'
 
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
               { path: paths.chitDetail, element: <ChitDetailPage /> },
               { path: paths.categories, element: <CategoriesPage /> },
               { path: paths.budgets, element: <BudgetsPage /> },
+              { path: paths.reports, element: <ReportsPage /> },
               { path: paths.settings, element: <SettingsPage /> },
             ],
           },

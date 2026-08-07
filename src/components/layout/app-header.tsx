@@ -8,7 +8,7 @@ export function AppHeader() {
   const { data: family, isLoading } = useCurrentFamily()
 
   return (
-    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center justify-between border-b px-4 backdrop-blur">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center justify-between border-b px-4 backdrop-blur print:hidden">
       <div className="min-w-0">
         {isLoading ? (
           <Skeleton className="h-5 w-32" />

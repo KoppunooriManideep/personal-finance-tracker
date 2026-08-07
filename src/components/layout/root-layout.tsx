@@ -22,9 +22,9 @@ export function RootLayout() {
   return (
     <div className="bg-background min-h-svh">
       <Sidebar />
-      <div className="flex min-h-svh flex-col md:pl-60">
+      <div className="flex min-h-svh flex-col md:pl-60 print:pl-0">
         <AppHeader />
-        <main className="flex-1 p-4 pb-20 md:pb-6">
+        <main className="flex-1 p-4 pb-20 md:pb-6 print:p-0">
           <Outlet />
         </main>
       </div>
