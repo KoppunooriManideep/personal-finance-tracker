@@ -536,7 +536,7 @@ function Metric({ label, value, hint, tone }: MetricProps) {
       <p className="text-muted-foreground text-xs">{label}</p>
       <p
         className={cn(
-          'text-lg font-semibold tabular-nums',
+          'text-base font-semibold tabular-nums break-words sm:text-lg',
           tone === 'negative' && 'text-destructive',
           tone === 'positive' && 'text-emerald-600 dark:text-emerald-400',
         )}

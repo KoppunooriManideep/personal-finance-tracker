@@ -63,6 +63,35 @@ export function getCurrentIstMonth(): string {
   return `${year}-${month}`
 }
 
+/** The `YYYY-MM` period (IST) a timestamp falls in. */
+export function istPeriodKey(input: DateInput): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(toDate(input))
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  return `${year}-${month}`
+}
+
+/**
+ * Start year of the current Indian financial year (Apr–Mar). Jan–Mar belong to
+ * the previous year's FY (e.g. Feb 2026 → FY starting 2025).
+ */
+export function getCurrentFinancialYearStart(): number {
+  const key = getCurrentIstMonth()
+  const year = Number(key.slice(0, 4))
+  const month = Number(key.slice(5, 7))
+  return month >= 4 ? year : year - 1
+}
+
+/** Human label for a financial year, e.g. 2025 → "FY 2025–26". */
+export function financialYearLabel(startYear: number): string {
+  const endShort = String((startYear + 1) % 100).padStart(2, '0')
+  return `FY ${startYear}–${endShort}`
+}
+
 /**
  * Return `YYYY-MM-DD` for the first day of the given date's month (IST).
  * Handy for the budgets `period_month` column.
