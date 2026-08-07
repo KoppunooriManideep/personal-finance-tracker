@@ -9,6 +9,8 @@ export const paths = {
   dashboard: '/dashboard',
   transactions: '/transactions',
   accounts: '/accounts',
+  chits: '/chits',
+  chitDetail: '/chits/:id',
   categories: '/categories',
   budgets: '/budgets',
   recurring: '/recurring',
@@ -16,3 +18,6 @@ export const paths = {
 } as const
 
 export type AppPath = (typeof paths)[keyof typeof paths]
+
+/** Build the URL for a single chit's detail page. */
+export const chitDetailPath = (id: string) => `/chits/${id}`

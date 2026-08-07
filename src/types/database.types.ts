@@ -20,6 +20,7 @@ export type AccountType = 'cash' | 'bank' | 'credit_card' | 'wallet'
 export type CategoryKind = 'income' | 'expense'
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
+export type ChitStatus = 'active' | 'completed'
 
 export interface Database {
   public: {
@@ -396,6 +397,104 @@ export interface Database {
           deleted_at?: string | null
         }
         Relationships: []
+      }
+      chits: {
+        Row: {
+          id: string
+          family_id: string
+          owner_id: string | null
+          name: string
+          chit_value: number
+          tenure_months: number
+          start_date: string
+          organizer: string | null
+          notes: string | null
+          received_month: number | null
+          received_amount: number | null
+          status: ChitStatus
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          owner_id?: string | null
+          name: string
+          chit_value: number
+          tenure_months: number
+          start_date: string
+          organizer?: string | null
+          notes?: string | null
+          received_month?: number | null
+          received_amount?: number | null
+          status?: ChitStatus
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          owner_id?: string | null
+          name?: string
+          chit_value?: number
+          tenure_months?: number
+          start_date?: string
+          organizer?: string | null
+          notes?: string | null
+          received_month?: number | null
+          received_amount?: number | null
+          status?: ChitStatus
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+      chit_payments: {
+        Row: {
+          id: string
+          chit_id: string
+          family_id: string
+          month_number: number
+          amount_paid: number
+          payment_date: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          chit_id: string
+          family_id: string
+          month_number: number
+          amount_paid: number
+          payment_date?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          chit_id?: string
+          family_id?: string
+          month_number?: number
+          amount_paid?: number
+          payment_date?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'chit_payments_chit_id_fkey'
+            columns: ['chit_id']
+            isOneToOne: false
+            referencedRelation: 'chits'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: {

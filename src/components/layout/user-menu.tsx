@@ -1,4 +1,4 @@
-import { LogOut, Settings, Tags } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -64,12 +64,6 @@ export function UserMenu() {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to={paths.categories} className="flex w-full items-center gap-2 cursor-pointer">
-            <Tags className="h-4 w-4" />
-            <span>Categories</span>
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to={paths.settings} className="flex w-full items-center gap-2 cursor-pointer">
             <Settings className="h-4 w-4" />

@@ -7,6 +7,8 @@ import { OnboardingPage } from '@/features/family/components/onboarding-page'
 import { DashboardPage } from '@/features/dashboard/components/dashboard-page'
 import { TransactionsPage } from '@/features/transactions/components/transactions-page'
 import { AccountsPage } from '@/features/accounts/components/accounts-page'
+import { ChitsPage } from '@/features/chits/components/chits-page'
+import { ChitDetailPage } from '@/features/chits/components/chit-detail-page'
 import { CategoriesPage } from '@/features/categories/components/categories-page'
 import { BudgetsPage } from '@/features/budgets/components/budgets-page'
 import { SettingsPage } from '@/features/settings/components/settings-page'
@@ -38,6 +40,8 @@ export const router = createBrowserRouter([
               { path: paths.dashboard, element: <DashboardPage /> },
               { path: paths.transactions, element: <TransactionsPage /> },
               { path: paths.accounts, element: <AccountsPage /> },
+              { path: paths.chits, element: <ChitsPage /> },
+              { path: paths.chitDetail, element: <ChitDetailPage /> },
               { path: paths.categories, element: <CategoriesPage /> },
               { path: paths.budgets, element: <BudgetsPage /> },
               { path: paths.settings, element: <SettingsPage /> },
