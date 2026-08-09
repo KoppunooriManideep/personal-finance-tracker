@@ -16,6 +16,7 @@ function flatChit(
   return {
     chitValue: 100_000_000, // ₹10,00,000
     tenureMonths: 25,
+    baseMonthly: 4_000_000, // ₹40,000 flat instalment (value ÷ tenure)
     startDate: '2024-01-01',
     payments: Array.from({ length: months }, (_, i) => ({
       monthNumber: i + 1,
@@ -75,6 +76,7 @@ describe('buildCashFlows', () => {
     const flows = buildCashFlows({
       chitValue: 100_000_000,
       tenureMonths: 25,
+      baseMonthly: 4_000_000,
       startDate: '2024-01-01',
       payments: [
         { monthNumber: 1, amountPaid: 100, paymentDate: '2024-01-20' },
@@ -141,6 +143,14 @@ describe('summarizeChit', () => {
     expect(s.xirrPct as number).toBeLessThan(20)
   })
 
+  it('computes base EMI and total commission earned vs the flat instalment', () => {
+    // Flat base = ₹10,00,000 / 25 = ₹40,000. Paying ₹34,000 for 6 months means
+    // ₹6,000 dividend each month → ₹36,000 commission earned.
+    const s = summarizeChit(flatChit({ months: 6, monthlyPaise: 3_400_000 }))
+    expect(s.baseMonthly).toBe(4_000_000) // ₹40,000
+    expect(s.totalCommission).toBe(3_600_000) // ₹36,000
+  })
+
   it('reports an in-progress chit (not yet received) with null XIRR', () => {
     const s = summarizeChit(flatChit({ months: 6, monthlyPaise: 3_800_000 }))
     expect(s.totalPaid).toBe(22_800_000)
@@ -174,6 +184,7 @@ describe('summarizeChit', () => {
     const s = summarizeChit({
       chitValue: 100_000_000,
       tenureMonths: 25,
+      baseMonthly: 4_000_000,
       startDate: '2024-01-01',
       payments: [],
     })
@@ -205,6 +216,7 @@ describe('summarizeChit', () => {
     const s = projectChit({
       chitValue: 100_000_000,
       tenureMonths: 4,
+      baseMonthly: 25_000_000,
       startDate: '2024-01-01',
       payments: [{ monthNumber: 1, amountPaid: 5_000_000 }],
       assumedMonthlyPaise: 1_000_000,
@@ -219,6 +231,7 @@ describe('summarizeChit', () => {
     const s = summarizeChit({
       chitValue: 100_000_000,
       tenureMonths: 25,
+      baseMonthly: 4_000_000,
       startDate: '2024-01-01',
       payments: [
         { monthNumber: 1, amountPaid: 1_000_000 },

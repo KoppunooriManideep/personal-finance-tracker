@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Loader2, Users } from 'lucide-react'
@@ -37,6 +37,7 @@ const emptyDefaults: ChitFormValues = {
   // Start numeric fields empty (not 0) so users type straight in on mobile.
   chitValue: undefined as unknown as number,
   tenureMonths: undefined as unknown as number,
+  baseMonthly: undefined as unknown as number,
   startDate: '',
   ownerId: null,
   organizer: '',
@@ -61,6 +62,18 @@ export function ChitFormDialog({ open, onOpenChange, chit }: ChitFormDialogProps
     defaultValues: emptyDefaults,
   })
 
+  // Suggest the flat instalment (value ÷ tenure) to guide the Base EMI field.
+  // useWatch (not watch()) keeps this compiler-safe — it returns a value, not a
+  // function that would opt the component out of React Compiler memoization.
+  const watchedValue = useWatch({ control, name: 'chitValue' })
+  const watchedTenure = useWatch({ control, name: 'tenureMonths' })
+  const suggestedBaseEmi =
+    Number.isFinite(watchedValue) &&
+    Number.isFinite(watchedTenure) &&
+    watchedTenure > 0
+      ? Math.round(watchedValue / watchedTenure)
+      : null
+
   // Sync form values whenever the dialog opens (for create or a specific edit).
   useEffect(() => {
     if (!open) return
@@ -70,6 +83,7 @@ export function ChitFormDialog({ open, onOpenChange, chit }: ChitFormDialogProps
             name: chit.name,
             chitValue: paiseToRupees(chit.chitValue),
             tenureMonths: chit.tenureMonths,
+            baseMonthly: paiseToRupees(chit.baseMonthly),
             startDate: chit.startDate,
             ownerId: chit.ownerId,
             organizer: chit.organizer ?? '',
@@ -161,6 +175,31 @@ export function ChitFormDialog({ open, onOpenChange, chit }: ChitFormDialogProps
                   </p>
                 ) : null}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="chit-base-emi">Base EMI (₹)</Label>
+              <Input
+                id="chit-base-emi"
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="0.00"
+                {...register('baseMonthly', { valueAsNumber: true })}
+              />
+              {errors.baseMonthly ? (
+                <p className="text-destructive text-sm">
+                  {errors.baseMonthly.message}
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  The flat monthly instalment. Commission each month is Base EMI −
+                  what you actually pay.
+                  {suggestedBaseEmi
+                    ? ` Often ₹${suggestedBaseEmi.toLocaleString('en-IN')} (value ÷ tenure).`
+                    : ''}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">

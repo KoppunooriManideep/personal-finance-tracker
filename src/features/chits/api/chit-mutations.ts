@@ -8,6 +8,8 @@ export interface CreateChitInput {
   /** Total chit value in integer paise. */
   chitValuePaise: number
   tenureMonths: number
+  /** Base EMI (flat monthly instalment) in integer paise. */
+  baseMonthlyPaise: number
   /** ISO date (YYYY-MM-DD). */
   startDate: string
   organizer: string | null
@@ -20,6 +22,7 @@ export interface UpdateChitInput {
   ownerId: string | null
   chitValuePaise: number
   tenureMonths: number
+  baseMonthlyPaise: number
   startDate: string
   organizer: string | null
   notes: string | null
@@ -39,6 +42,7 @@ export async function createChit(input: CreateChitInput): Promise<Chit> {
     name: input.name,
     chit_value: input.chitValuePaise,
     tenure_months: input.tenureMonths,
+    base_monthly: input.baseMonthlyPaise,
     start_date: input.startDate,
     organizer: input.organizer,
     notes: input.notes,
@@ -52,6 +56,7 @@ export async function createChit(input: CreateChitInput): Promise<Chit> {
     name: input.name,
     chitValue: input.chitValuePaise,
     tenureMonths: input.tenureMonths,
+    baseMonthly: input.baseMonthlyPaise,
     startDate: input.startDate,
     organizer: input.organizer,
     notes: input.notes,
@@ -70,6 +75,7 @@ export async function updateChit(input: UpdateChitInput): Promise<void> {
       owner_id: input.ownerId,
       chit_value: input.chitValuePaise,
       tenure_months: input.tenureMonths,
+      base_monthly: input.baseMonthlyPaise,
       start_date: input.startDate,
       organizer: input.organizer,
       notes: input.notes,

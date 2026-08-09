@@ -7,6 +7,7 @@ export function toChitInput(chit: Chit, payments: ChitPayment[]): ChitInput {
   return {
     chitValue: chit.chitValue,
     tenureMonths: chit.tenureMonths,
+    baseMonthly: chit.baseMonthly,
     startDate: chit.startDate,
     receivedMonth: chit.receivedMonth,
     receivedAmount: chit.receivedAmount,
@@ -26,7 +27,7 @@ export function chitSummary(
   return summarizeChit(toChitInput(chit, payments))
 }
 
-/** Base monthly instalment before any dividend (chit value / tenure), paise. */
+/** Base EMI: the flat monthly instalment recorded for the chit, in paise. */
 export function chitBaseMonthly(chit: Chit): number {
-  return Math.round(chit.chitValue / chit.tenureMonths)
+  return chit.baseMonthly
 }

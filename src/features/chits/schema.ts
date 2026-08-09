@@ -21,6 +21,10 @@ export const chitSchema = z.object({
     .int('Tenure must be a whole number of months')
     .min(1, 'Tenure must be at least 1 month')
     .max(600, 'Tenure looks too long'),
+  baseMonthly: z
+    .number({ message: 'Enter the base EMI' })
+    .refine(Number.isFinite, 'Enter the base EMI')
+    .positive('Base EMI must be greater than 0'),
   startDate: z.string().min(1, 'Select a start date'),
   ownerId: z.string().uuid().nullable(),
   organizer: z.string().trim().max(100, 'Organizer name is too long').optional(),

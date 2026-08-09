@@ -32,6 +32,8 @@ export interface ChitInput {
   chitValue: number
   /** Number of monthly installments. */
   tenureMonths: number
+  /** Base EMI: the flat monthly instalment agreed for the chit, in paise. */
+  baseMonthly: number
   /** ISO date (YYYY-MM-DD) of the first installment (month 1). */
   startDate: string
   /** 1-based month the chit was taken/prized, or null if not yet taken. */
@@ -46,6 +48,14 @@ export interface ChitInput {
 export interface ChitSummary {
   /** Sum of all recorded payments (paise). */
   totalPaid: number
+  /** Base EMI: the flat monthly instalment recorded for the chit, in paise. */
+  baseMonthly: number
+  /**
+   * Total commission (dividend) earned across recorded months (paise): the
+   * flat base instalment × months paid − what you actually paid. Positive when
+   * dividends let you pay below the flat EMI (the normal chit case).
+   */
+  totalCommission: number
   /** Amount received so far (paise); 0 if the chit has not been taken. */
   totalReceived: number
   /**
@@ -212,11 +222,16 @@ export function summarizeChit(input: ChitInput): ChitSummary {
   const simpleReturnPct =
     totalPaid > 0 ? (netPosition / totalPaid) * 100 : null
 
+  const baseMonthly = Math.max(0, input.baseMonthly)
+  const totalCommission = baseMonthly * monthsPaid - totalPaid
+
   const rate = xirr(buildCashFlows(input))
   const xirrPct = rate == null ? null : rate * 100
 
   return {
     totalPaid,
+    baseMonthly,
+    totalCommission,
     totalReceived,
     netPosition,
     monthsPaid,
@@ -274,6 +289,7 @@ export function projectChit(input: ProjectChitInput): ChitSummary {
   return summarizeChit({
     chitValue: input.chitValue,
     tenureMonths: input.tenureMonths,
+    baseMonthly: input.baseMonthly,
     startDate: input.startDate,
     receivedMonth,
     receivedAmount,

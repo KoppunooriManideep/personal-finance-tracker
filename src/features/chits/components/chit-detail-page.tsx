@@ -5,6 +5,8 @@ import {
   ChevronRight,
   MoreVertical,
   Pencil,
+  Printer,
+  Share2,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -26,11 +28,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { formatPaise, rupeesToPaise } from '@/lib/money'
-import { formatMonthYear } from '@/lib/date'
+import { formatDate, formatMonthYear } from '@/lib/date'
 import { paths } from '@/config/paths'
 import { chitIcon as ChitIcon } from '@/features/chits/config'
 import { dateForMonth, projectChit } from '@/features/chits/chit-math'
 import { chitBaseMonthly, chitSummary, toChitInput } from '@/features/chits/summary'
+import { buildChitShareText, shareOrCopy } from '@/features/chits/share'
 import { useChits } from '@/features/chits/hooks/use-chits'
 import { useChitPayments } from '@/features/chits/hooks/use-chit-payments'
 import { useDeleteChit } from '@/features/chits/hooks/use-chit-mutations'
@@ -142,6 +145,19 @@ export function ChitDetailPage() {
     assumedFinalReceivePaise: assumedReceive,
   })
 
+  const handleShare = async () => {
+    try {
+      const result = await shareOrCopy(
+        chit.name,
+        buildChitShareText(chit, summary),
+      )
+      if (result === 'copied') toast.success('Summary copied to clipboard')
+    } catch (error) {
+      toast.error('Could not share this chit')
+      console.error(error)
+    }
+  }
+
   const handleDelete = async () => {
     try {
       await deleteChit.mutateAsync(chit.id)
@@ -185,37 +201,68 @@ export function ChitDetailPage() {
         title={chit.name}
         description={`${formatPaise(chit.chitValue, { decimals: false })} · ${chit.tenureMonths} months${chit.organizer ? ` · ${chit.organizer}` : ''}`}
         actions={
-          canManage ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Chit actions">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                  <Pencil className="h-4 w-4" />
-                  Edit details
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : undefined
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Chit actions"
+                className="print:hidden"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleShare}>
+                <Share2 className="h-4 w-4" />
+                Share summary
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.print()}>
+                <Printer className="h-4 w-4" />
+                Print / Save PDF
+              </DropdownMenuItem>
+              {canManage ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                    <Pencil className="h-4 w-4" />
+                    Edit details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
+
+      {/* Print-only header line (hidden on screen). */}
+      <p className="text-muted-foreground hidden text-sm print:block">
+        {family?.name ? `${family.name} · ` : ''}Generated {formatDate(new Date())}
+      </p>
 
       {/* Results */}
       <Card>
         <CardContent className="space-y-4 p-4">
           <div className="grid grid-cols-2 gap-4">
+            <Metric
+              label="Base EMI"
+              value={formatPaise(summary.baseMonthly)}
+              hint="Chit value ÷ tenure"
+            />
             <Metric label="Total paid" value={formatPaise(summary.totalPaid)} />
+            <Metric
+              label="Total commission"
+              value={formatPaise(summary.totalCommission)}
+              tone={summary.totalCommission < 0 ? 'negative' : 'positive'}
+              hint="Dividends vs base EMI"
+            />
             <Metric
               label="Received"
               value={
@@ -301,7 +348,7 @@ export function ChitDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0"
+              className="shrink-0 print:hidden"
               onClick={() => setReceivedOpen(true)}
             >
               {summary.isReceived ? 'Edit' : 'Mark received'}
@@ -320,7 +367,7 @@ export function ChitDetailPage() {
         </div>
 
         {canManage && gapMonths.length > 0 ? (
-          <Card>
+          <Card className="print:hidden">
             <CardContent className="space-y-2 p-4">
               <Label htmlFor="fill-amount">
                 Fill the {gapMonths.length} un-recorded month
@@ -354,19 +401,26 @@ export function ChitDetailPage() {
 
         <Card>
           <CardContent className="divide-border divide-y p-0">
+            {/* Column headers */}
+            <div className="text-muted-foreground flex items-center gap-3 px-4 py-2 text-xs font-medium tracking-wide uppercase">
+              <span className="w-7 shrink-0">No.</span>
+              <span className="min-w-0 flex-1">Month</span>
+              <span className="shrink-0">Amount paid</span>
+              {canManage ? <span className="w-4 shrink-0" aria-hidden /> : null}
+            </div>
+
             {Array.from({ length: chit.tenureMonths }, (_, i) => i + 1).map(
               (month) => {
                 const payment = paymentByMonth.get(month)
                 const isReceivedMonth = chit.receivedMonth === month
                 const row = (
                   <div className="flex items-center gap-3 px-4 py-3 text-left">
+                    <span className="text-muted-foreground w-7 shrink-0 text-sm tabular-nums">
+                      {month}
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        Month {month}
-                        <span className="text-muted-foreground font-normal">
-                          {' · '}
-                          {formatMonthYear(dateForMonth(chit.startDate, month))}
-                        </span>
+                        {formatMonthYear(dateForMonth(chit.startDate, month))}
                         {isReceivedMonth ? (
                           <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ml-2 rounded-full px-2 py-0.5 text-xs">
                             Taken
@@ -375,11 +429,11 @@ export function ChitDetailPage() {
                       </p>
                     </div>
                     {payment ? (
-                      <span className="text-sm font-semibold tabular-nums">
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">
                         {formatPaise(payment.amountPaid)}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-muted-foreground shrink-0 text-sm">
                         Not recorded
                       </span>
                     )}
@@ -419,7 +473,7 @@ export function ChitDetailPage() {
                 {summary.isReceived ? '.' : ', and you receive the chit at the end.'}
               </p>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 print:hidden">
                 <div className="space-y-1.5">
                   <Label htmlFor="proj-monthly">Assumed monthly (₹)</Label>
                   <Input
@@ -515,7 +569,7 @@ function BackLink() {
   return (
     <Link
       to={paths.chits}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm print:hidden"
     >
       <ArrowLeft className="h-4 w-4" />
       Chits

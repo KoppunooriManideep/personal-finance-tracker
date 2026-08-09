@@ -36,7 +36,15 @@ export function BottomNav() {
     <>
       <nav
         className="bg-card fixed inset-x-0 bottom-0 z-30 border-t md:hidden print:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          // Promote to its own compositor layer so iOS Safari repaints it in
+          // place during momentum scrolling (otherwise the fixed bar lags at a
+          // stale mid-screen position until the scroll settles).
+          transform: 'translateZ(0)',
+          willChange: 'transform',
+          WebkitBackfaceVisibility: 'hidden',
+        }}
       >
         <div className="grid h-16 grid-cols-5 items-center justify-items-center">
           <NavItem to={paths.dashboard} label="Dashboard" icon={LayoutDashboard} />

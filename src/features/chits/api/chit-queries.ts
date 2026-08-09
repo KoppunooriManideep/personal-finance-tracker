@@ -10,6 +10,8 @@ export interface Chit {
   /** Total chit value in integer paise. */
   chitValue: number
   tenureMonths: number
+  /** Base EMI: the flat monthly instalment agreed for the chit, in paise. */
+  baseMonthly: number
   /** ISO date (YYYY-MM-DD) of the first installment. */
   startDate: string
   organizer: string | null
@@ -26,7 +28,7 @@ export async function fetchChits(familyId: string): Promise<Chit[]> {
   const { data, error } = await supabase
     .from('chits')
     .select(
-      'id, owner_id, name, chit_value, tenure_months, start_date, organizer, notes, received_month, received_amount, status',
+      'id, owner_id, name, chit_value, tenure_months, base_monthly, start_date, organizer, notes, received_month, received_amount, status',
     )
     .eq('family_id', familyId)
     .is('deleted_at', null)
@@ -41,6 +43,7 @@ export async function fetchChits(familyId: string): Promise<Chit[]> {
     name: row.name,
     chitValue: row.chit_value,
     tenureMonths: row.tenure_months,
+    baseMonthly: row.base_monthly,
     startDate: row.start_date,
     organizer: row.organizer ?? null,
     notes: row.notes ?? null,

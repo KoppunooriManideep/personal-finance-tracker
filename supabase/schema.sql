@@ -222,6 +222,7 @@ create table if not exists public.chits (
   name             text not null check (char_length(name) between 1 and 100),
   chit_value       bigint not null check (chit_value > 0),
   tenure_months    integer not null check (tenure_months > 0),
+  base_monthly     bigint not null check (base_monthly > 0),
   start_date       date not null,
   organizer        text,
   notes            text,

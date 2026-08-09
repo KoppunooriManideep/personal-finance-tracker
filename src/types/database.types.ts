@@ -406,6 +406,7 @@ export interface Database {
           name: string
           chit_value: number
           tenure_months: number
+          base_monthly: number
           start_date: string
           organizer: string | null
           notes: string | null
@@ -423,6 +424,7 @@ export interface Database {
           name: string
           chit_value: number
           tenure_months: number
+          base_monthly: number
           start_date: string
           organizer?: string | null
           notes?: string | null
@@ -440,6 +442,7 @@ export interface Database {
           name?: string
           chit_value?: number
           tenure_months?: number
+          base_monthly?: number
           start_date?: string
           organizer?: string | null
           notes?: string | null
