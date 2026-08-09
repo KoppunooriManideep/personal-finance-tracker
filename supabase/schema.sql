@@ -1055,6 +1055,11 @@ create table if not exists public.gold_holdings (
   cashback_paise         bigint not null default 0 check (cashback_paise >= 0),
   reward_value_paise     bigint not null default 0 check (reward_value_paise >= 0),
   voucher_savings_paise  bigint not null default 0 check (voucher_savings_paise >= 0),
+  making_charges_paise   bigint not null default 0 check (making_charges_paise >= 0),
+  va_paise               bigint not null default 0 check (va_paise >= 0),
+  stone_charges_paise    bigint not null default 0 check (stone_charges_paise >= 0),
+  gst_percent            numeric(5,2) not null default 0
+                           check (gst_percent >= 0 and gst_percent <= 100),
   website                text,
   brand                  text,
   notes                  text,

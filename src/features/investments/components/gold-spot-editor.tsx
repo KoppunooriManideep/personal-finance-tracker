@@ -8,6 +8,7 @@ import { formatPaise, paiseToRupees, rupeesToPaise } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
 import { useSetGoldSpot } from '@/features/investments/hooks/use-gold-mutations'
 import { fetchLiveGoldRate } from '@/features/investments/api/gold-rate-api'
+import { ratePerGram } from '@/features/investments/gold-math'
 import type { GoldSpot } from '@/features/investments/api/gold-queries'
 
 interface GoldSpotEditorProps {
@@ -74,16 +75,27 @@ export function GoldSpotEditor({ spot, canManage }: GoldSpotEditorProps) {
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="min-w-0">
-          <p className="text-muted-foreground text-xs">Gold rate · 24K (999)</p>
+          <p className="text-muted-foreground text-xs">Gold rate · per gram</p>
           {spot ? (
             <>
-              <p className="text-xl font-semibold tabular-nums">
-                {formatPaise(spot.pricePaisePerGram, { decimals: false })}
-                <span className="text-muted-foreground text-sm font-normal">
-                  {' '}
-                  / g
-                </span>
-              </p>
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
+                <p className="text-xl font-semibold tabular-nums">
+                  {formatPaise(spot.pricePaisePerGram, { decimals: false })}
+                  <span className="text-muted-foreground text-sm font-normal">
+                    {' '}
+                    24K
+                  </span>
+                </p>
+                <p className="text-base font-medium tabular-nums">
+                  {formatPaise(ratePerGram(spot.pricePaisePerGram, 916), {
+                    decimals: false,
+                  })}
+                  <span className="text-muted-foreground text-sm font-normal">
+                    {' '}
+                    22K
+                  </span>
+                </p>
+              </div>
               <p className="text-muted-foreground text-xs">
                 Updated {formatDateTime(spot.asOf)}
                 {spot.source ? ` · ${spot.source}` : ''}
@@ -98,7 +110,7 @@ export function GoldSpotEditor({ spot, canManage }: GoldSpotEditorProps) {
 
         {canManage ? (
           editing ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 print:hidden">
               <Input
                 type="number"
                 step="0.01"
@@ -126,7 +138,7 @@ export function GoldSpotEditor({ spot, canManage }: GoldSpotEditorProps) {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 print:hidden">
               <Button size="sm" onClick={fetchLive} disabled={fetching}>
                 {fetching ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

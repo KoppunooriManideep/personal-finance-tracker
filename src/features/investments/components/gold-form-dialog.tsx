@@ -38,6 +38,14 @@ interface GoldFormDialogProps {
   holding?: GoldHolding | null
 }
 
+/**
+ * react-hook-form's `valueAsNumber` turns an empty input into NaN, which fails
+ * the optional zod number checks. Convert blanks to `undefined` so optional
+ * money/percent fields can be left empty.
+ */
+const asOptionalNumber = (value: string) =>
+  value === '' || value == null ? undefined : Number(value)
+
 function emptyDefaults(): GoldFormValues {
   return {
     form: 'coin',
@@ -51,6 +59,10 @@ function emptyDefaults(): GoldFormValues {
     cashback: undefined,
     rewardValue: undefined,
     voucherSavings: undefined,
+    makingCharges: undefined,
+    va: undefined,
+    stoneCharges: undefined,
+    gstPercent: undefined,
     website: '',
     brand: '',
     tags: '',
@@ -97,6 +109,10 @@ export function GoldFormDialog({
             rewardValue: paiseToRupees(holding.rewardValuePaise) || undefined,
             voucherSavings:
               paiseToRupees(holding.voucherSavingsPaise) || undefined,
+            makingCharges: paiseToRupees(holding.makingChargesPaise) || undefined,
+            va: paiseToRupees(holding.vaPaise) || undefined,
+            stoneCharges: paiseToRupees(holding.stoneChargesPaise) || undefined,
+            gstPercent: holding.gstPercent || undefined,
             website: holding.website ?? '',
             brand: holding.brand ?? '',
             tags: holding.tags.join(', '),
@@ -106,6 +122,8 @@ export function GoldFormDialog({
         : emptyDefaults(),
     )
   }, [open, holding, reset])
+
+  const isJewellery = useWatch({ control, name: 'form' }) === 'jewellery'
 
   // Live "effective cost" preview (in rupees) as the user types.
   const price = useWatch({ control, name: 'priceTotal' }) || 0
@@ -182,7 +200,10 @@ export function GoldFormDialog({
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Weight (g) / unit" error={errors.weightGrams?.message}>
+                <Field
+                  label={isJewellery ? 'Net gold weight (g)' : 'Weight (g) / unit'}
+                  error={errors.weightGrams?.message}
+                >
                   <Input
                     type="number"
                     step="0.001"
@@ -246,6 +267,53 @@ export function GoldFormDialog({
               </div>
             </Section>
 
+            {/* Jewellery cost breakdown */}
+            {isJewellery ? (
+              <Section
+                label="Jewellery charges"
+                hint="Optional breakdown of the price — making/VA, stones & GST aren't recoverable in gold value."
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Making charges (₹)">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      {...register('makingCharges', { setValueAs: asOptionalNumber })}
+                    />
+                  </Field>
+                  <Field label="VA / value addition (₹)">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      {...register('va', { setValueAs: asOptionalNumber })}
+                    />
+                  </Field>
+                  <Field label="Stone charges (₹)">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      {...register('stoneCharges', { setValueAs: asOptionalNumber })}
+                    />
+                  </Field>
+                  <Field label="GST (%)" error={errors.gstPercent?.message}>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      placeholder="e.g. 3"
+                      {...register('gstPercent', { setValueAs: asOptionalNumber })}
+                    />
+                  </Field>
+                </div>
+              </Section>
+            ) : null}
+
             {/* Savings & rewards */}
             <Section
               label="Rewards"
@@ -258,7 +326,7 @@ export function GoldFormDialog({
                     step="0.01"
                     inputMode="decimal"
                     placeholder="0.00"
-                    {...register('cashback', { valueAsNumber: true })}
+                    {...register('cashback', { setValueAs: asOptionalNumber })}
                   />
                 </Field>
                 <Field label="Reward-points value (₹)">
@@ -267,7 +335,7 @@ export function GoldFormDialog({
                     step="0.01"
                     inputMode="decimal"
                     placeholder="0.00"
-                    {...register('rewardValue', { valueAsNumber: true })}
+                    {...register('rewardValue', { setValueAs: asOptionalNumber })}
                   />
                 </Field>
                 <Field label="Vouchers / SuperCoins (₹)">
@@ -276,7 +344,7 @@ export function GoldFormDialog({
                     step="0.01"
                     inputMode="decimal"
                     placeholder="0.00"
-                    {...register('voucherSavings', { valueAsNumber: true })}
+                    {...register('voucherSavings', { setValueAs: asOptionalNumber })}
                   />
                 </Field>
               </div>

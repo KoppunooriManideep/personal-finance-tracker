@@ -36,6 +36,15 @@ export const goldSchema = z.object({
   cashback: optionalMoney,
   rewardValue: optionalMoney,
   voucherSavings: optionalMoney,
+  // Jewellery cost breakdown (optional; part of the total price).
+  makingCharges: optionalMoney,
+  va: optionalMoney,
+  stoneCharges: optionalMoney,
+  gstPercent: z
+    .number()
+    .min(0, 'Cannot be negative')
+    .max(100, 'Too high')
+    .optional(),
   // Store / provenance (optional).
   website: z.string().trim().max(100, 'Too long').optional(),
   brand: z.string().trim().max(100, 'Too long').optional(),

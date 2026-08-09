@@ -31,6 +31,11 @@ export function goldFormToWrite(values: GoldFormValues): GoldHoldingWrite {
     cashbackPaise: money(values.cashback),
     rewardValuePaise: money(values.rewardValue),
     voucherSavingsPaise: money(values.voucherSavings),
+    // Jewellery breakdown only applies to jewellery; zero it out otherwise.
+    makingChargesPaise: values.form === 'jewellery' ? money(values.makingCharges) : 0,
+    vaPaise: values.form === 'jewellery' ? money(values.va) : 0,
+    stoneChargesPaise: values.form === 'jewellery' ? money(values.stoneCharges) : 0,
+    gstPercent: values.form === 'jewellery' ? (values.gstPercent ?? 0) : 0,
     website: nullable(values.website),
     brand: nullable(values.brand),
     notes: nullable(values.notes),

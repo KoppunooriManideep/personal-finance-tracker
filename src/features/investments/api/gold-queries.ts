@@ -20,6 +20,12 @@ export interface GoldHolding {
   cashbackPaise: number
   rewardValuePaise: number
   voucherSavingsPaise: number
+  /** Jewellery cost breakdown (optional; part of priceTotalPaise, not on top). */
+  makingChargesPaise: number
+  vaPaise: number
+  stoneChargesPaise: number
+  /** GST rate on this purchase, as a percentage (e.g. 3 for 3%). */
+  gstPercent: number
   website: string | null
   brand: string | null
   notes: string | null
@@ -42,7 +48,7 @@ export async function fetchGoldHoldings(
   const { data, error } = await supabase
     .from('gold_holdings')
     .select(
-      'id, owner_id, form, name, fineness, weight_mg, quantity, purchase_date, price_total_paise, cashback_paise, reward_value_paise, voucher_savings_paise, website, brand, notes, tags',
+      'id, owner_id, form, name, fineness, weight_mg, quantity, purchase_date, price_total_paise, cashback_paise, reward_value_paise, voucher_savings_paise, making_charges_paise, va_paise, stone_charges_paise, gst_percent, website, brand, notes, tags',
     )
     .eq('family_id', familyId)
     .is('deleted_at', null)
@@ -64,6 +70,10 @@ export async function fetchGoldHoldings(
     cashbackPaise: row.cashback_paise,
     rewardValuePaise: row.reward_value_paise,
     voucherSavingsPaise: row.voucher_savings_paise,
+    makingChargesPaise: row.making_charges_paise,
+    vaPaise: row.va_paise,
+    stoneChargesPaise: row.stone_charges_paise,
+    gstPercent: Number(row.gst_percent),
     website: row.website ?? null,
     brand: row.brand ?? null,
     notes: row.notes ?? null,

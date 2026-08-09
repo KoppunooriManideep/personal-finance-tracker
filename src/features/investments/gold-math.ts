@@ -62,6 +62,14 @@ export interface GoldHoldingSummary {
   effectivePerGramPaise: number | null
 }
 
+/** Per-gram rate for a given fineness, derived from the 24K (999) rate. */
+export function ratePerGram(
+  spot999PaisePerGram: number,
+  fineness: number,
+): number {
+  return Math.round((spot999PaisePerGram * fineness) / REFERENCE_FINENESS)
+}
+
 /** Gross weight across all units of a line, in milligrams. */
 export function totalWeightMg(h: GoldHoldingInput): number {
   return h.weightMg * h.quantity

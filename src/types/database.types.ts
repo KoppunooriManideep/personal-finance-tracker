@@ -515,6 +515,10 @@ export interface Database {
           cashback_paise: number
           reward_value_paise: number
           voucher_savings_paise: number
+          making_charges_paise: number
+          va_paise: number
+          stone_charges_paise: number
+          gst_percent: number
           website: string | null
           brand: string | null
           notes: string | null
@@ -537,6 +541,10 @@ export interface Database {
           cashback_paise?: number
           reward_value_paise?: number
           voucher_savings_paise?: number
+          making_charges_paise?: number
+          va_paise?: number
+          stone_charges_paise?: number
+          gst_percent?: number
           website?: string | null
           brand?: string | null
           notes?: string | null
@@ -559,6 +567,10 @@ export interface Database {
           cashback_paise?: number
           reward_value_paise?: number
           voucher_savings_paise?: number
+          making_charges_paise?: number
+          va_paise?: number
+          stone_charges_paise?: number
+          gst_percent?: number
           website?: string | null
           brand?: string | null
           notes?: string | null

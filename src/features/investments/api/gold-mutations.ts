@@ -15,6 +15,10 @@ export interface GoldHoldingWrite {
   cashbackPaise: number
   rewardValuePaise: number
   voucherSavingsPaise: number
+  makingChargesPaise: number
+  vaPaise: number
+  stoneChargesPaise: number
+  gstPercent: number
   website: string | null
   brand: string | null
   notes: string | null
@@ -43,6 +47,10 @@ function toRow(input: GoldHoldingWrite) {
     cashback_paise: input.cashbackPaise,
     reward_value_paise: input.rewardValuePaise,
     voucher_savings_paise: input.voucherSavingsPaise,
+    making_charges_paise: input.makingChargesPaise,
+    va_paise: input.vaPaise,
+    stone_charges_paise: input.stoneChargesPaise,
+    gst_percent: input.gstPercent,
     website: input.website,
     brand: input.brand,
     notes: input.notes,
@@ -127,6 +135,10 @@ function toHolding(input: GoldHoldingWrite): Omit<GoldHolding, 'id'> {
     cashbackPaise: input.cashbackPaise,
     rewardValuePaise: input.rewardValuePaise,
     voucherSavingsPaise: input.voucherSavingsPaise,
+    makingChargesPaise: input.makingChargesPaise,
+    vaPaise: input.vaPaise,
+    stoneChargesPaise: input.stoneChargesPaise,
+    gstPercent: input.gstPercent,
     website: input.website,
     brand: input.brand,
     notes: input.notes,

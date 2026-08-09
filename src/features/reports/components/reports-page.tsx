@@ -21,6 +21,9 @@ import { useFamilyMembers } from '@/features/family/hooks/use-family-members'
 import { useAccounts } from '@/features/accounts/hooks/use-accounts'
 import { useCategories } from '@/features/categories/hooks/use-categories'
 import { useTransactions } from '@/features/transactions/hooks/use-transactions'
+import { useGoldHoldings } from '@/features/investments/hooks/use-gold-holdings'
+import { useGoldSpot } from '@/features/investments/hooks/use-gold-spot'
+import { formatGrams } from '@/features/investments/config'
 import { useDashboardStore } from '@/stores/dashboard-store'
 import {
   aggregateReportFrom,
@@ -29,6 +32,10 @@ import {
   monthPeriodKeys,
   type MonthRow,
 } from '@/features/reports/aggregate'
+import {
+  aggregateGoldForReport,
+  type GoldReportSlice,
+} from '@/features/reports/gold-report'
 
 type PeriodType = 'month' | 'fy'
 
@@ -50,6 +57,8 @@ export function ReportsPage() {
   const { data: members, isLoading: membersLoading } = useFamilyMembers()
   const { data: accounts, isLoading: accountsLoading } = useAccounts()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
+  const { data: goldHoldings } = useGoldHoldings()
+  const { data: goldSpot } = useGoldSpot()
 
   const loading =
     txLoading || membersLoading || accountsLoading || categoriesLoading
@@ -84,6 +93,16 @@ export function ReportsPage() {
           })
         : [],
     [periodType, transactions, accounts, periodKeys, selectedOwnerId],
+  )
+
+  const gold = useMemo(
+    () =>
+      aggregateGoldForReport(goldHoldings ?? [], {
+        periodKeys,
+        selectedOwnerId,
+        spotPaisePerGram: goldSpot?.pricePaisePerGram ?? 0,
+      }),
+    [goldHoldings, goldSpot, periodKeys, selectedOwnerId],
   )
 
   const selectedMember = members?.find((m) => m.userId === selectedOwnerId)
@@ -200,17 +219,20 @@ export function ReportsPage() {
           onRetry={() => refetch()}
         />
       ) : (
-        <ReportBody
-          familyName={family?.name ?? 'Family'}
-          periodLabel={periodLabel}
-          viewLabel={viewLabel}
-          totalIncome={report.totalIncome}
-          totalExpense={report.totalExpense}
-          netSaved={report.netSaved}
-          byCategory={report.byCategory}
-          byMember={report.byMember}
-          monthlyRows={breakdown}
-        />
+        <div className="space-y-6">
+          <ReportBody
+            familyName={family?.name ?? 'Family'}
+            periodLabel={periodLabel}
+            viewLabel={viewLabel}
+            totalIncome={report.totalIncome}
+            totalExpense={report.totalExpense}
+            netSaved={report.netSaved}
+            byCategory={report.byCategory}
+            byMember={report.byMember}
+            monthlyRows={breakdown}
+          />
+          <InvestmentsReportCard gold={gold} periodLabel={periodLabel} />
+        </div>
       )}
     </div>
   )
@@ -375,6 +397,91 @@ function ReportBody({
             </div>
           </section>
         ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Investments is a SEPARATE card from the period financial report because a
+ * portfolio's value is point-in-time, not period-bound. The headline "invested
+ * this period" IS period-aware (purchases in the selected month/FY); the current
+ * value/P&L is shown separately and clearly marked "as of today".
+ */
+function InvestmentsReportCard({
+  gold,
+  periodLabel,
+}: {
+  gold: GoldReportSlice
+  periodLabel: string
+}) {
+  if (gold.count === 0) return null
+  const positive = gold.gainPaise >= 0
+
+  return (
+    <Card className="print:border-0 print:shadow-none">
+      <CardContent className="space-y-5 p-6">
+        <div className="space-y-1 border-b pb-4">
+          <h2 className="text-xl font-semibold">Investments · {periodLabel}</h2>
+          <p className="text-muted-foreground text-sm">
+            Gold — coins, bars &amp; jewellery
+          </p>
+        </div>
+
+        {/* Period-aware: what was invested during the selected period. */}
+        <div>
+          <p className="text-muted-foreground text-xs">Invested this period</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums break-words">
+            {formatPaise(gold.boughtSpentPaise, { decimals: false })}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            {gold.boughtCount > 0
+              ? `${gold.boughtCount} ${gold.boughtCount === 1 ? 'item' : 'items'} · ${formatGrams(gold.boughtWeightMg)} bought in ${periodLabel}`
+              : `No gold bought in ${periodLabel}`}
+          </p>
+        </div>
+
+        {/* Point-in-time snapshot — clearly labelled so it isn't read as period data. */}
+        <div className="border-t pt-4">
+          <p className="text-muted-foreground mb-2 text-xs">
+            Holdings as of today · {gold.count}{' '}
+            {gold.count === 1 ? 'item' : 'items'} · {formatGrams(gold.totalWeightMg)}
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border p-3">
+              <p className="text-muted-foreground text-xs">Invested</p>
+              <p className="mt-1 text-base font-semibold tabular-nums break-words sm:text-lg">
+                {formatPaise(gold.investedPaise, { decimals: false })}
+              </p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-muted-foreground text-xs">Current value</p>
+              <p className="mt-1 text-base font-semibold tabular-nums break-words sm:text-lg">
+                {gold.hasRate
+                  ? formatPaise(gold.currentValuePaise, { decimals: false })
+                  : '—'}
+              </p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-muted-foreground text-xs">Gain</p>
+              <p
+                className={cn(
+                  'mt-1 text-base font-semibold tabular-nums break-words sm:text-lg',
+                  gold.hasRate &&
+                    (positive
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-destructive'),
+                )}
+              >
+                {gold.hasRate
+                  ? `${positive ? '+' : ''}${formatPaise(gold.gainPaise, { decimals: false })}${
+                      gold.gainPct != null ? ` · ${gold.gainPct.toFixed(1)}%` : ''
+                    }`
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
