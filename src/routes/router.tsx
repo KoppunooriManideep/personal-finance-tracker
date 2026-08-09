@@ -9,6 +9,7 @@ import { TransactionsPage } from '@/features/transactions/components/transaction
 import { AccountsPage } from '@/features/accounts/components/accounts-page'
 import { ChitsPage } from '@/features/chits/components/chits-page'
 import { ChitDetailPage } from '@/features/chits/components/chit-detail-page'
+import { InvestmentsPage } from '@/features/investments/components/investments-page'
 import { CategoriesPage } from '@/features/categories/components/categories-page'
 import { BudgetsPage } from '@/features/budgets/components/budgets-page'
 import { ReportsPage } from '@/features/reports/components/reports-page'
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
               { path: paths.accounts, element: <AccountsPage /> },
               { path: paths.chits, element: <ChitsPage /> },
               { path: paths.chitDetail, element: <ChitDetailPage /> },
+              { path: paths.investments, element: <InvestmentsPage /> },
               { path: paths.categories, element: <CategoriesPage /> },
               { path: paths.budgets, element: <BudgetsPage /> },
               { path: paths.reports, element: <ReportsPage /> },

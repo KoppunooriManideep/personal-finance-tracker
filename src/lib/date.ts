@@ -63,6 +63,16 @@ export function getCurrentIstMonth(): string {
   return `${year}-${month}`
 }
 
+/** Today's date as `YYYY-MM-DD` (IST) — the value a `type="date"` input uses. */
+export function getCurrentIstDate(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
 /** The `YYYY-MM` period (IST) a timestamp falls in. */
 export function istPeriodKey(input: DateInput): string {
   const parts = new Intl.DateTimeFormat('en-CA', {

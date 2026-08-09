@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   Coins,
   FileBarChart,
+  Gem,
   LayoutDashboard,
   PiggyBank,
   Settings,
@@ -24,6 +25,7 @@ export const navItems: NavItem[] = [
   { label: 'Transactions', to: paths.transactions, icon: ArrowLeftRight },
   { label: 'Accounts', to: paths.accounts, icon: Wallet },
   { label: 'Chits', to: paths.chits, icon: Coins },
+  { label: 'Investments', to: paths.investments, icon: Gem },
   { label: 'Budgets', to: paths.budgets, icon: PiggyBank },
   { label: 'Reports', to: paths.reports, icon: FileBarChart },
   { label: 'Categories', to: paths.categories, icon: Tags },
@@ -36,6 +38,7 @@ export const navItems: NavItem[] = [
  */
 export const moreNavItems: NavItem[] = [
   { label: 'Chits', to: paths.chits, icon: Coins },
+  { label: 'Investments', to: paths.investments, icon: Gem },
   { label: 'Budgets', to: paths.budgets, icon: PiggyBank },
   { label: 'Reports', to: paths.reports, icon: FileBarChart },
   { label: 'Categories', to: paths.categories, icon: Tags },

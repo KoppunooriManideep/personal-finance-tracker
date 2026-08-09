@@ -11,6 +11,7 @@ export const paths = {
   accounts: '/accounts',
   chits: '/chits',
   chitDetail: '/chits/:id',
+  investments: '/investments',
   categories: '/categories',
   budgets: '/budgets',
   reports: '/reports',

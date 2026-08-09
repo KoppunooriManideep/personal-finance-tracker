@@ -19,4 +19,14 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Server-side Vercel functions (Edge runtime): Web globals, no React rules.
+    files: ['api/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+    },
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

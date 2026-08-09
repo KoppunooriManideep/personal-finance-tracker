@@ -21,6 +21,7 @@ export type CategoryKind = 'income' | 'expense'
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
 export type ChitStatus = 'active' | 'completed'
+export type GoldForm = 'coin' | 'bar' | 'jewellery'
 
 export interface Database {
   public: {
@@ -498,6 +499,99 @@ export interface Database {
             referencedColumns: ['id']
           },
         ]
+      }
+      gold_holdings: {
+        Row: {
+          id: string
+          family_id: string
+          owner_id: string | null
+          form: GoldForm
+          name: string | null
+          fineness: number
+          weight_mg: number
+          quantity: number
+          purchase_date: string
+          price_total_paise: number
+          cashback_paise: number
+          reward_value_paise: number
+          voucher_savings_paise: number
+          website: string | null
+          brand: string | null
+          notes: string | null
+          tags: string[]
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          owner_id?: string | null
+          form: GoldForm
+          name?: string | null
+          fineness: number
+          weight_mg: number
+          quantity?: number
+          purchase_date: string
+          price_total_paise: number
+          cashback_paise?: number
+          reward_value_paise?: number
+          voucher_savings_paise?: number
+          website?: string | null
+          brand?: string | null
+          notes?: string | null
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          owner_id?: string | null
+          form?: GoldForm
+          name?: string | null
+          fineness?: number
+          weight_mg?: number
+          quantity?: number
+          purchase_date?: string
+          price_total_paise?: number
+          cashback_paise?: number
+          reward_value_paise?: number
+          voucher_savings_paise?: number
+          website?: string | null
+          brand?: string | null
+          notes?: string | null
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+      gold_spot: {
+        Row: {
+          family_id: string
+          price_paise_per_gram: number
+          source: string | null
+          as_of: string
+          updated_at: string
+        }
+        Insert: {
+          family_id: string
+          price_paise_per_gram: number
+          source?: string | null
+          as_of?: string
+          updated_at?: string
+        }
+        Update: {
+          family_id?: string
+          price_paise_per_gram?: number
+          source?: string | null
+          as_of?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
