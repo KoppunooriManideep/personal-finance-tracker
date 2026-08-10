@@ -15,6 +15,7 @@ export const paths = {
   investmentsGold: '/investments/gold',
   investmentsStocks: '/investments/stocks',
   investmentsMutualFunds: '/investments/mutual-funds',
+  investmentsPf: '/investments/pf',
   categories: '/categories',
   budgets: '/budgets',
   reports: '/reports',

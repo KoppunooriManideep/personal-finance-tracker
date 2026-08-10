@@ -14,6 +14,7 @@ import {
   formatDate,
   formatMonthYear,
   getCurrentFinancialYearStart,
+  getCurrentIstDate,
   getCurrentIstMonth,
 } from '@/lib/date'
 import { useCurrentFamily } from '@/features/family/hooks/use-current-family'
@@ -26,6 +27,8 @@ import { useGoldSpot } from '@/features/investments/hooks/use-gold-spot'
 import { useMarketHoldings } from '@/features/investments/hooks/use-market-holdings'
 import { useMarketQuotes } from '@/features/investments/hooks/use-market-quotes'
 import { summarizeMarketPortfolio } from '@/features/investments/market-math'
+import { summarizePf } from '@/features/investments/pf-math'
+import { usePfAccounts } from '@/features/investments/hooks/use-pf-accounts'
 import { quoteKey } from '@/features/investments/quotes-shared'
 import { useDashboardStore } from '@/stores/dashboard-store'
 import {
@@ -112,6 +115,7 @@ export function ReportsPage() {
   const { data: market } = useMarketHoldings()
   const marketAll = useMemo(() => market ?? [], [market])
   const quotes = useMarketQuotes(marketAll)
+  const { data: pfAccounts } = usePfAccounts()
 
   const investments = useMemo<InvestmentsReport>(() => {
     const portfolioFor = (kind: 'stock' | 'mutual_fund') =>
@@ -129,12 +133,20 @@ export function ReportsPage() {
               quotes.data?.quotes[quoteKey(h.kind, h.isin, h.symbol)] ?? null,
           })),
       )
+    const pfPaise = summarizePf(
+      (pfAccounts ?? []).filter(
+        (p) => !selectedOwnerId || p.ownerId === selectedOwnerId,
+      ),
+      getCurrentIstDate(),
+    ).projectedBalancePaise
+
     return buildInvestmentsReport(
       gold,
       portfolioFor('stock'),
       portfolioFor('mutual_fund'),
+      pfPaise,
     )
-  }, [gold, marketAll, selectedOwnerId, quotes.data])
+  }, [gold, marketAll, selectedOwnerId, quotes.data, pfAccounts])
 
   const selectedMember = members?.find((m) => m.userId === selectedOwnerId)
   const viewLabel = selectedOwnerId

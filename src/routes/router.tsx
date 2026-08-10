@@ -12,6 +12,7 @@ import { ChitDetailPage } from '@/features/chits/components/chit-detail-page'
 import { InvestmentsPage } from '@/features/investments/components/investments-page'
 import { GoldPage } from '@/features/investments/components/gold-page'
 import { MarketPage } from '@/features/investments/components/market-page'
+import { PfPage } from '@/features/investments/components/pf-page'
 import { CategoriesPage } from '@/features/categories/components/categories-page'
 import { BudgetsPage } from '@/features/budgets/components/budgets-page'
 import { ReportsPage } from '@/features/reports/components/reports-page'
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
                 path: paths.investmentsMutualFunds,
                 element: <MarketPage kind="mutual_fund" />,
               },
+              { path: paths.investmentsPf, element: <PfPage /> },
               { path: paths.categories, element: <CategoriesPage /> },
               { path: paths.budgets, element: <BudgetsPage /> },
               { path: paths.reports, element: <ReportsPage /> },

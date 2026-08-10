@@ -13,8 +13,12 @@ import { useMarketHoldings } from '@/features/investments/hooks/use-market-holdi
 import { useMarketQuotes } from '@/features/investments/hooks/use-market-quotes'
 import { useChits } from '@/features/chits/hooks/use-chits'
 import { useChitPayments } from '@/features/chits/hooks/use-chit-payments'
+import { usePfAccounts } from '@/features/investments/hooks/use-pf-accounts'
 import { summarizeGoldPortfolio } from '@/features/investments/gold-math'
 import { summarizeMarketPortfolio } from '@/features/investments/market-math'
+import { summarizePf } from '@/features/investments/pf-math'
+import { PF_COLOR } from '@/features/investments/pf-config'
+import { getCurrentIstDate } from '@/lib/date'
 import { quoteKey } from '@/features/investments/quotes-shared'
 import { groupPaymentsByChit } from '@/features/chits/api/chit-payment-queries'
 import { chitSummary } from '@/features/chits/summary'
@@ -38,6 +42,7 @@ export function NetWorthView() {
   const { data: market, isLoading: marketLoading } = useMarketHoldings()
   const { data: chits, isLoading: chitsLoading } = useChits()
   const { data: chitPayments, isLoading: paymentsLoading } = useChitPayments()
+  const { data: pf, isLoading: pfLoading } = usePfAccounts()
 
   const marketHoldings = useMemo(() => market ?? [], [market])
   const quotes = useMarketQuotes(marketHoldings)
@@ -85,22 +90,30 @@ export function NetWorthView() {
       0,
     )
 
+    // Provident Fund — projected balance today (owner-scoped).
+    const pfPaise = summarizePf(
+      scopeByOwner(pf ?? [], selectedOwnerId),
+      getCurrentIstDate(),
+    ).projectedBalancePaise
+
     return buildNetWorth([
       { key: 'cash', label: 'Cash & bank', color: '#0ea5e9', valuePaise: cashPaise },
       { key: 'gold', label: 'Gold', color: '#d4a017', valuePaise: goldPaise },
       { key: 'stocks', label: 'Stocks', color: '#3b82f6', valuePaise: stocksPaise },
       { key: 'mf', label: 'Mutual Funds', color: '#8b5cf6', valuePaise: mfPaise },
+      { key: 'pf', label: 'Provident Fund', color: PF_COLOR, valuePaise: pfPaise },
       { key: 'chits', label: 'Chits', color: '#f59e0b', valuePaise: chitsPaise },
       { key: 'loans', label: 'Loans', color: '#ef4444', valuePaise: 0 },
     ])
-  }, [accounts, gold, spot, marketHoldings, quotes.data, chits, chitPayments, selectedOwnerId])
+  }, [accounts, gold, spot, marketHoldings, quotes.data, chits, chitPayments, pf, selectedOwnerId])
 
   const loading =
     accountsLoading ||
     goldLoading ||
     marketLoading ||
     chitsLoading ||
-    paymentsLoading
+    paymentsLoading ||
+    pfLoading
 
   if (loading) return <LoadingSpinner />
 
@@ -188,8 +201,9 @@ export function NetWorthView() {
       </Card>
 
       <p className="text-muted-foreground text-xs">
-        As of today. Active chits count the amount paid in so far; once a chit is
-        received it becomes cash in your accounts. Loans are coming soon.
+        As of today. PF is estimated from your last entry + contribution. Active
+        chits count the amount paid in so far; once received a chit becomes cash
+        in your accounts. Loans are coming soon.
       </p>
     </div>
   )

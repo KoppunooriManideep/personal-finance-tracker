@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronRight,
   Gem,
+  Landmark,
   LineChart,
   PieChart,
   type LucideIcon,
@@ -21,7 +22,11 @@ import { useMarketHoldings } from '@/features/investments/hooks/use-market-holdi
 import { useMarketQuotes } from '@/features/investments/hooks/use-market-quotes'
 import { summarizeGoldPortfolio } from '@/features/investments/gold-math'
 import { summarizeMarketPortfolio } from '@/features/investments/market-math'
+import { summarizePf } from '@/features/investments/pf-math'
+import { PF_COLOR } from '@/features/investments/pf-config'
+import { usePfAccounts } from '@/features/investments/hooks/use-pf-accounts'
 import { quoteKey } from '@/features/investments/quotes-shared'
+import { getCurrentIstDate } from '@/lib/date'
 import type { MarketHoldingKind } from '@/types/database.types'
 
 interface AssetClass {
@@ -70,6 +75,12 @@ export function InvestmentsPage() {
       )
     return { stock: summarize('stock'), mutual_fund: summarize('mutual_fund') }
   }, [marketAll, quotes.data])
+
+  const { data: pf } = usePfAccounts()
+  const pfProjectedPaise = useMemo(
+    () => summarizePf(pf ?? [], getCurrentIstDate()).projectedBalancePaise,
+    [pf],
+  )
 
   const marketClass = (
     key: string,
@@ -123,6 +134,18 @@ export function InvestmentsPage() {
       paths.investmentsMutualFunds,
       marketByKind.mutual_fund,
     ),
+    {
+      key: 'pf',
+      label: 'Provident Fund',
+      icon: Landmark,
+      color: PF_COLOR,
+      to: paths.investmentsPf,
+      available: true,
+      investedPaise: pfProjectedPaise,
+      currentValuePaise: pfProjectedPaise,
+      gainPaise: 0,
+      gainPct: null,
+    },
   ]
 
   const totalInvested = classes.reduce((s, c) => s + c.investedPaise, 0)

@@ -1,5 +1,6 @@
 import type { GoldReportSlice } from '@/features/reports/gold-report'
 import type { MarketPortfolioSummary } from '@/features/investments/market-math'
+import { PF_COLOR } from '@/features/investments/pf-config'
 
 /** One asset class's snapshot for the investments report table. */
 export interface InvestmentClassRow {
@@ -34,6 +35,7 @@ export function buildInvestmentsReport(
   gold: GoldReportSlice,
   stock: MarketPortfolioSummary,
   mf: MarketPortfolioSummary,
+  pfProjectedPaise: number,
 ): InvestmentsReport {
   const rows: InvestmentClassRow[] = []
 
@@ -68,6 +70,19 @@ export function buildInvestmentsReport(
       gainPaise: priced ? p.gainPaise : 0,
       gainPct: priced ? p.gainPct : null,
       priced,
+    })
+  }
+
+  if (pfProjectedPaise > 0) {
+    rows.push({
+      key: 'pf',
+      label: 'Provident Fund',
+      color: PF_COLOR,
+      investedPaise: pfProjectedPaise,
+      currentValuePaise: pfProjectedPaise,
+      gainPaise: 0,
+      gainPct: null, // PF has no cost-basis gain; it's a growing balance
+      priced: true,
     })
   }
 

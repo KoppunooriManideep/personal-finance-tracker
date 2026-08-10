@@ -23,6 +23,7 @@ export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
 export type ChitStatus = 'active' | 'completed'
 export type GoldForm = 'coin' | 'bar' | 'jewellery'
 export type MarketHoldingKind = 'stock' | 'mutual_fund'
+export type PfKind = 'epf' | 'ppf' | 'vpf' | 'nps'
 
 export interface Database {
   public: {
@@ -654,6 +655,54 @@ export interface Database {
           invested_paise?: number
           notes?: string | null
           tags?: string[]
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+      pf_accounts: {
+        Row: {
+          id: string
+          family_id: string
+          owner_id: string | null
+          kind: PfKind
+          name: string | null
+          balance_paise: number
+          as_of: string
+          monthly_contribution_paise: number
+          annual_rate: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          owner_id?: string | null
+          kind?: PfKind
+          name?: string | null
+          balance_paise: number
+          as_of: string
+          monthly_contribution_paise?: number
+          annual_rate?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          owner_id?: string | null
+          kind?: PfKind
+          name?: string | null
+          balance_paise?: number
+          as_of?: string
+          monthly_contribution_paise?: number
+          annual_rate?: number
+          notes?: string | null
           created_at?: string
           updated_at?: string
           deleted_at?: string | null
