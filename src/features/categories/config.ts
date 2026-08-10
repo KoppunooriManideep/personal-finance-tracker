@@ -35,26 +35,36 @@ export const categoryKindMeta: Record<CategoryKind, CategoryKindMeta> = {
  * verbatim in `categories.color`. Grouped roughly green→blue→purple→pink→grey.
  */
 export const categoryColors = [
-  '#22c55e',
-  '#16a34a',
-  '#10b981',
-  '#14b8a6',
-  '#06b6d4',
-  '#0ea5e9',
-  '#3b82f6',
-  '#6366f1',
-  '#8b5cf6',
-  '#a855f7',
-  '#d946ef',
-  '#ec4899',
-  '#f43f5e',
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#eab308',
-  '#84cc16',
-  '#64748b',
-  '#6b7280',
+  // greens
+  '#4ade80', '#22c55e', '#16a34a',
+  // emerald / teal
+  '#10b981', '#2dd4bf', '#14b8a6', '#0f766e',
+  // cyan
+  '#22d3ee', '#06b6d4',
+  // sky
+  '#38bdf8', '#0ea5e9', '#0284c7',
+  // blue
+  '#60a5fa', '#3b82f6', '#2563eb',
+  // indigo
+  '#818cf8', '#6366f1', '#4f46e5',
+  // violet
+  '#a78bfa', '#8b5cf6', '#7c3aed',
+  // purple / fuchsia
+  '#c084fc', '#a855f7', '#d946ef', '#e879f9',
+  // pink
+  '#f472b6', '#ec4899', '#be185d',
+  // rose
+  '#fb7185', '#f43f5e', '#e11d48',
+  // red
+  '#f87171', '#ef4444', '#dc2626',
+  // orange
+  '#fb923c', '#f97316', '#ea580c',
+  // amber / yellow
+  '#fbbf24', '#f59e0b', '#d97706', '#facc15', '#eab308',
+  // lime
+  '#a3e635', '#84cc16',
+  // browns / neutrals
+  '#a16207', '#78716c', '#94a3b8', '#64748b', '#475569', '#6b7280',
 ] as const
 
 /** Default colour applied to a new category before the user picks one. */
