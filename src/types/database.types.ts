@@ -22,6 +22,7 @@ export type TransactionType = 'income' | 'expense' | 'transfer'
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
 export type ChitStatus = 'active' | 'completed'
 export type GoldForm = 'coin' | 'bar' | 'jewellery'
+export type MarketHoldingKind = 'stock' | 'mutual_fund'
 
 export interface Database {
   public: {
@@ -602,6 +603,60 @@ export interface Database {
           source?: string | null
           as_of?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      market_holdings: {
+        Row: {
+          id: string
+          family_id: string
+          owner_id: string | null
+          kind: MarketHoldingKind
+          isin: string | null
+          symbol: string
+          exchange: string | null
+          name: string | null
+          quantity: number
+          invested_paise: number
+          notes: string | null
+          tags: string[]
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          owner_id?: string | null
+          kind: MarketHoldingKind
+          isin?: string | null
+          symbol: string
+          exchange?: string | null
+          name?: string | null
+          quantity: number
+          invested_paise: number
+          notes?: string | null
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          owner_id?: string | null
+          kind?: MarketHoldingKind
+          isin?: string | null
+          symbol?: string
+          exchange?: string | null
+          name?: string | null
+          quantity?: number
+          invested_paise?: number
+          notes?: string | null
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
         }
         Relationships: []
       }

@@ -7,6 +7,10 @@ import {
   buildGoldRatePayload,
   parseGoldRatesFromHtml,
 } from './src/features/investments/gold-rate-parse.ts'
+import {
+  resolveQuotes,
+  type QuoteItem,
+} from './src/features/investments/quotes-shared.ts'
 
 const GOODRETURNS_URL = 'https://www.goodreturns.in/gold-rates/'
 
@@ -47,6 +51,31 @@ function goldRateDevApi(): Plugin {
         } catch {
           res.statusCode = 502
           res.end(JSON.stringify({ error: 'Could not reach GoodReturns' }))
+        }
+      })
+
+      // /api/quotes — live stock/MF prices (mirrors api/quotes.ts).
+      server.middlewares.use('/api/quotes', async (req, res) => {
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        try {
+          let raw = ''
+          await new Promise<void>((resolve) => {
+            req.on('data', (chunk) => (raw += chunk))
+            req.on('end', () => resolve())
+          })
+          const items = (JSON.parse(raw || '{}').items ?? []) as QuoteItem[]
+          const { quotes, prevCloses, names } = await resolveQuotes(items)
+          res.end(
+            JSON.stringify({
+              quotes,
+              prevCloses,
+              names,
+              fetchedAt: new Date().toISOString(),
+            }),
+          )
+        } catch {
+          res.statusCode = 502
+          res.end(JSON.stringify({ error: 'Could not fetch quotes' }))
         }
       })
     },

@@ -11,8 +11,7 @@ import { ChitsPage } from '@/features/chits/components/chits-page'
 import { ChitDetailPage } from '@/features/chits/components/chit-detail-page'
 import { InvestmentsPage } from '@/features/investments/components/investments-page'
 import { GoldPage } from '@/features/investments/components/gold-page'
-import { ComingSoonPage } from '@/features/investments/components/coming-soon-page'
-import { LineChart, PieChart } from 'lucide-react'
+import { MarketPage } from '@/features/investments/components/market-page'
 import { CategoriesPage } from '@/features/categories/components/categories-page'
 import { BudgetsPage } from '@/features/budgets/components/budgets-page'
 import { ReportsPage } from '@/features/reports/components/reports-page'
@@ -51,23 +50,11 @@ export const router = createBrowserRouter([
               { path: paths.investmentsGold, element: <GoldPage /> },
               {
                 path: paths.investmentsStocks,
-                element: (
-                  <ComingSoonPage
-                    title="Stocks"
-                    icon={LineChart}
-                    description="Track your equity holdings, daily prices and returns. We're building this next."
-                  />
-                ),
+                element: <MarketPage kind="stock" />,
               },
               {
                 path: paths.investmentsMutualFunds,
-                element: (
-                  <ComingSoonPage
-                    title="Mutual Funds"
-                    icon={PieChart}
-                    description="Track your mutual-fund units, live NAVs and returns. We're building this next."
-                  />
-                ),
+                element: <MarketPage kind="mutual_fund" />,
               },
               { path: paths.categories, element: <CategoriesPage /> },
               { path: paths.budgets, element: <BudgetsPage /> },

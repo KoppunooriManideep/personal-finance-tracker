@@ -17,7 +17,12 @@ import { formatPaise } from '@/lib/money'
 import { paths } from '@/config/paths'
 import { useGoldHoldings } from '@/features/investments/hooks/use-gold-holdings'
 import { useGoldSpot } from '@/features/investments/hooks/use-gold-spot'
+import { useMarketHoldings } from '@/features/investments/hooks/use-market-holdings'
+import { useMarketQuotes } from '@/features/investments/hooks/use-market-quotes'
 import { summarizeGoldPortfolio } from '@/features/investments/gold-math'
+import { summarizeMarketPortfolio } from '@/features/investments/market-math'
+import { quoteKey } from '@/features/investments/quotes-shared'
+import type { MarketHoldingKind } from '@/types/database.types'
 
 interface AssetClass {
   key: string
@@ -47,6 +52,48 @@ export function InvestmentsPage() {
     [holdings, spotPaise],
   )
 
+  const { data: market } = useMarketHoldings()
+  const marketAll = useMemo(() => market ?? [], [market])
+  const quotes = useMarketQuotes(marketAll)
+
+  const marketByKind = useMemo(() => {
+    const summarize = (kind: MarketHoldingKind) =>
+      summarizeMarketPortfolio(
+        marketAll
+          .filter((h) => h.kind === kind)
+          .map((h) => ({
+            quantity: h.quantity,
+            investedPaise: h.investedPaise,
+            pricePaisePerUnit:
+              quotes.data?.quotes[quoteKey(h.kind, h.isin, h.symbol)] ?? null,
+          })),
+      )
+    return { stock: summarize('stock'), mutual_fund: summarize('mutual_fund') }
+  }, [marketAll, quotes.data])
+
+  const marketClass = (
+    key: string,
+    label: string,
+    icon: LucideIcon,
+    color: string,
+    to: string,
+    p: ReturnType<typeof summarizeMarketPortfolio>,
+  ): AssetClass => {
+    const priced = p.pricedCount > 0
+    return {
+      key,
+      label,
+      icon,
+      color,
+      to,
+      available: true,
+      investedPaise: p.investedPaise,
+      currentValuePaise: priced ? p.currentValuePaise : p.investedPaise,
+      gainPaise: priced ? p.gainPaise : 0,
+      gainPct: priced ? p.gainPct : null,
+    }
+  }
+
   const classes: AssetClass[] = [
     {
       key: 'gold',
@@ -60,30 +107,22 @@ export function InvestmentsPage() {
       gainPaise: hasRate ? gold.gainPaise : 0,
       gainPct: hasRate ? gold.gainPct : null,
     },
-    {
-      key: 'stocks',
-      label: 'Stocks',
-      icon: LineChart,
-      color: '#3b82f6',
-      to: paths.investmentsStocks,
-      available: false,
-      investedPaise: 0,
-      currentValuePaise: 0,
-      gainPaise: 0,
-      gainPct: null,
-    },
-    {
-      key: 'mutual-funds',
-      label: 'Mutual Funds',
-      icon: PieChart,
-      color: '#8b5cf6',
-      to: paths.investmentsMutualFunds,
-      available: false,
-      investedPaise: 0,
-      currentValuePaise: 0,
-      gainPaise: 0,
-      gainPct: null,
-    },
+    marketClass(
+      'stocks',
+      'Stocks',
+      LineChart,
+      '#3b82f6',
+      paths.investmentsStocks,
+      marketByKind.stock,
+    ),
+    marketClass(
+      'mutual-funds',
+      'Mutual Funds',
+      PieChart,
+      '#8b5cf6',
+      paths.investmentsMutualFunds,
+      marketByKind.mutual_fund,
+    ),
   ]
 
   const totalInvested = classes.reduce((s, c) => s + c.investedPaise, 0)
@@ -197,11 +236,7 @@ export function InvestmentsPage() {
                 {segmentsOpen ? (
                   <ul className="mt-3 space-y-3">
                     {classes.map((asset) => (
-                      <SegmentPnlRow
-                        key={asset.key}
-                        asset={asset}
-                        hasRate={hasRate}
-                      />
+                      <SegmentPnlRow key={asset.key} asset={asset} />
                     ))}
                   </ul>
                 ) : null}
@@ -212,7 +247,7 @@ export function InvestmentsPage() {
           {/* Asset-class cards */}
           <div className="space-y-3">
             {classes.map((asset) => (
-              <AssetClassCard key={asset.key} asset={asset} hasRate={hasRate} />
+              <AssetClassCard key={asset.key} asset={asset} />
             ))}
           </div>
         </div>
@@ -221,14 +256,9 @@ export function InvestmentsPage() {
   )
 }
 
-function SegmentPnlRow({
-  asset,
-  hasRate,
-}: {
-  asset: AssetClass
-  hasRate: boolean
-}) {
+function SegmentPnlRow({ asset }: { asset: AssetClass }) {
   const positive = asset.gainPaise >= 0
+  const hasHoldings = asset.investedPaise > 0
   return (
     <li className="flex items-start justify-between gap-3">
       <span className="flex items-center gap-2 text-sm">
@@ -240,43 +270,47 @@ function SegmentPnlRow({
         {asset.label}
       </span>
 
-      {asset.available && hasRate ? (
+      {!hasHoldings ? (
+        <span className="text-muted-foreground text-sm">No holdings</span>
+      ) : (
         <span className="text-right">
           <span className="flex items-center justify-end gap-2">
-            <span
-              className={cn(
-                'text-sm font-semibold tabular-nums',
-                positive
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-destructive',
-              )}
-            >
-              {positive ? '+' : ''}
-              {formatPaise(asset.gainPaise, { decimals: false })}
-            </span>
             {asset.gainPct != null ? (
-              <span
-                className={cn(
-                  'rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums',
-                  positive
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-destructive/10 text-destructive',
-                )}
-              >
-                {positive ? '+' : ''}
-                {asset.gainPct.toFixed(2)}%
+              <>
+                <span
+                  className={cn(
+                    'text-sm font-semibold tabular-nums',
+                    positive
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-destructive',
+                  )}
+                >
+                  {positive ? '+' : ''}
+                  {formatPaise(asset.gainPaise, { decimals: false })}
+                </span>
+                <span
+                  className={cn(
+                    'rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums',
+                    positive
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-destructive/10 text-destructive',
+                  )}
+                >
+                  {positive ? '+' : ''}
+                  {asset.gainPct.toFixed(2)}%
+                </span>
+              </>
+            ) : (
+              <span className="text-muted-foreground text-sm tabular-nums">
+                {formatPaise(asset.currentValuePaise, { decimals: false })}
               </span>
-            ) : null}
+            )}
           </span>
           <span className="text-muted-foreground block text-xs tabular-nums">
             {formatPaise(asset.investedPaise, { decimals: false })} →{' '}
             {formatPaise(asset.currentValuePaise, { decimals: false })}
           </span>
         </span>
-      ) : asset.available ? (
-        <span className="text-muted-foreground text-sm">Set gold rate</span>
-      ) : (
-        <span className="text-muted-foreground text-sm">Coming soon</span>
       )}
     </li>
   )
@@ -325,15 +359,10 @@ function AllocationBar({
   )
 }
 
-function AssetClassCard({
-  asset,
-  hasRate,
-}: {
-  asset: AssetClass
-  hasRate: boolean
-}) {
+function AssetClassCard({ asset }: { asset: AssetClass }) {
   const Icon = asset.icon
   const positive = asset.gainPaise >= 0
+  const hasHoldings = asset.investedPaise > 0
   return (
     <Link to={asset.to} className="block">
       <Card className="transition-colors hover:bg-accent/50">
@@ -347,25 +376,21 @@ function AssetClassCard({
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium md:text-base">{asset.label}</p>
-            {asset.available ? (
+            {hasHoldings ? (
               <p className="text-muted-foreground truncate text-xs tabular-nums">
                 Invested {formatPaise(asset.investedPaise, { decimals: false })}
               </p>
             ) : (
-              <span className="text-muted-foreground bg-muted mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs">
-                Coming soon
-              </span>
+              <p className="text-muted-foreground text-xs">No holdings yet</p>
             )}
           </div>
 
-          {asset.available ? (
+          {hasHoldings ? (
             <div className="shrink-0 text-right">
               <p className="text-sm font-semibold tabular-nums">
-                {hasRate
-                  ? formatPaise(asset.currentValuePaise, { decimals: false })
-                  : '—'}
+                {formatPaise(asset.currentValuePaise, { decimals: false })}
               </p>
-              {hasRate && asset.gainPct != null ? (
+              {asset.gainPct != null ? (
                 <p
                   className={cn(
                     'text-xs font-medium tabular-nums',

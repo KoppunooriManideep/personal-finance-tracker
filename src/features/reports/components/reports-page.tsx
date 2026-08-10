@@ -23,7 +23,10 @@ import { useCategories } from '@/features/categories/hooks/use-categories'
 import { useTransactions } from '@/features/transactions/hooks/use-transactions'
 import { useGoldHoldings } from '@/features/investments/hooks/use-gold-holdings'
 import { useGoldSpot } from '@/features/investments/hooks/use-gold-spot'
-import { formatGrams } from '@/features/investments/config'
+import { useMarketHoldings } from '@/features/investments/hooks/use-market-holdings'
+import { useMarketQuotes } from '@/features/investments/hooks/use-market-quotes'
+import { summarizeMarketPortfolio } from '@/features/investments/market-math'
+import { quoteKey } from '@/features/investments/quotes-shared'
 import { useDashboardStore } from '@/stores/dashboard-store'
 import {
   aggregateReportFrom,
@@ -32,10 +35,11 @@ import {
   monthPeriodKeys,
   type MonthRow,
 } from '@/features/reports/aggregate'
+import { aggregateGoldForReport } from '@/features/reports/gold-report'
 import {
-  aggregateGoldForReport,
-  type GoldReportSlice,
-} from '@/features/reports/gold-report'
+  buildInvestmentsReport,
+  type InvestmentsReport,
+} from '@/features/reports/investments-report'
 
 type PeriodType = 'month' | 'fy'
 
@@ -104,6 +108,33 @@ export function ReportsPage() {
       }),
     [goldHoldings, goldSpot, periodKeys, selectedOwnerId],
   )
+
+  const { data: market } = useMarketHoldings()
+  const marketAll = useMemo(() => market ?? [], [market])
+  const quotes = useMarketQuotes(marketAll)
+
+  const investments = useMemo<InvestmentsReport>(() => {
+    const portfolioFor = (kind: 'stock' | 'mutual_fund') =>
+      summarizeMarketPortfolio(
+        marketAll
+          .filter(
+            (h) =>
+              h.kind === kind &&
+              (!selectedOwnerId || h.ownerId === selectedOwnerId),
+          )
+          .map((h) => ({
+            quantity: h.quantity,
+            investedPaise: h.investedPaise,
+            pricePaisePerUnit:
+              quotes.data?.quotes[quoteKey(h.kind, h.isin, h.symbol)] ?? null,
+          })),
+      )
+    return buildInvestmentsReport(
+      gold,
+      portfolioFor('stock'),
+      portfolioFor('mutual_fund'),
+    )
+  }, [gold, marketAll, selectedOwnerId, quotes.data])
 
   const selectedMember = members?.find((m) => m.userId === selectedOwnerId)
   const viewLabel = selectedOwnerId
@@ -231,7 +262,7 @@ export function ReportsPage() {
             byMember={report.byMember}
             monthlyRows={breakdown}
           />
-          <InvestmentsReportCard gold={gold} periodLabel={periodLabel} />
+          <InvestmentsReportCard report={investments} />
         </div>
       )}
     </div>
@@ -404,83 +435,95 @@ function ReportBody({
 
 /**
  * Investments is a SEPARATE card from the period financial report because a
- * portfolio's value is point-in-time, not period-bound. The headline "invested
- * this period" IS period-aware (purchases in the selected month/FY); the current
- * value/P&L is shown separately and clearly marked "as of today".
+ * portfolio's value is point-in-time, not period-bound. It shows a per-asset-class
+ * (Gold / Stocks / Mutual Funds) "as of today" snapshot table.
  */
-function InvestmentsReportCard({
-  gold,
-  periodLabel,
-}: {
-  gold: GoldReportSlice
-  periodLabel: string
-}) {
-  if (gold.count === 0) return null
-  const positive = gold.gainPaise >= 0
+function InvestmentsReportCard({ report }: { report: InvestmentsReport }) {
+  if (!report.hasAny) return null
+  const totalUp = report.totalGainPaise >= 0
+
+  const gainCell = (gainPaise: number, gainPct: number | null) => {
+    if (gainPct == null) return '—'
+    const up = gainPaise >= 0
+    return `${up ? '+' : ''}${formatPaise(gainPaise, { decimals: false })} · ${up ? '+' : ''}${gainPct.toFixed(1)}%`
+  }
 
   return (
     <Card className="print:border-0 print:shadow-none">
-      <CardContent className="space-y-5 p-6">
+      <CardContent className="space-y-4 p-6">
         <div className="space-y-1 border-b pb-4">
-          <h2 className="text-xl font-semibold">Investments · {periodLabel}</h2>
+          <h2 className="text-xl font-semibold">Investments</h2>
           <p className="text-muted-foreground text-sm">
-            Gold — coins, bars &amp; jewellery
+            Holdings as of {formatDate(new Date())}
           </p>
         </div>
 
-        {/* Period-aware: what was invested during the selected period. */}
-        <div>
-          <p className="text-muted-foreground text-xs">Invested this period</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums break-words">
-            {formatPaise(gold.boughtSpentPaise, { decimals: false })}
-          </p>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            {gold.boughtCount > 0
-              ? `${gold.boughtCount} ${gold.boughtCount === 1 ? 'item' : 'items'} · ${formatGrams(gold.boughtWeightMg)} bought in ${periodLabel}`
-              : `No gold bought in ${periodLabel}`}
-          </p>
-        </div>
-
-        {/* Point-in-time snapshot — clearly labelled so it isn't read as period data. */}
-        <div className="border-t pt-4">
-          <p className="text-muted-foreground mb-2 text-xs">
-            Holdings as of today · {gold.count}{' '}
-            {gold.count === 1 ? 'item' : 'items'} · {formatGrams(gold.totalWeightMg)}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border p-3">
-              <p className="text-muted-foreground text-xs">Invested</p>
-              <p className="mt-1 text-base font-semibold tabular-nums break-words sm:text-lg">
-                {formatPaise(gold.investedPaise, { decimals: false })}
-              </p>
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-muted-foreground text-xs">Current value</p>
-              <p className="mt-1 text-base font-semibold tabular-nums break-words sm:text-lg">
-                {gold.hasRate
-                  ? formatPaise(gold.currentValuePaise, { decimals: false })
-                  : '—'}
-              </p>
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-muted-foreground text-xs">Gain</p>
-              <p
-                className={cn(
-                  'mt-1 text-base font-semibold tabular-nums break-words sm:text-lg',
-                  gold.hasRate &&
-                    (positive
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-destructive'),
-                )}
-              >
-                {gold.hasRate
-                  ? `${positive ? '+' : ''}${formatPaise(gold.gainPaise, { decimals: false })}${
-                      gold.gainPct != null ? ` · ${gold.gainPct.toFixed(1)}%` : ''
-                    }`
-                  : '—'}
-              </p>
-            </div>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-muted-foreground border-b text-left">
+                <th className="py-2 font-medium">Asset</th>
+                <th className="py-2 pl-4 text-right font-medium">Invested</th>
+                <th className="py-2 pl-4 text-right font-medium">Current</th>
+                <th className="py-2 pl-4 text-right font-medium">Gain</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.rows.map((row) => (
+                <tr key={row.key} className="border-b last:border-0">
+                  <td className="py-2 pr-3">
+                    <span className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ backgroundColor: row.color }}
+                      />
+                      {row.label}
+                    </span>
+                  </td>
+                  <td className="py-2 pl-4 text-right tabular-nums whitespace-nowrap">
+                    {formatPaise(row.investedPaise, { decimals: false })}
+                  </td>
+                  <td className="py-2 pl-4 text-right tabular-nums whitespace-nowrap">
+                    {row.priced
+                      ? formatPaise(row.currentValuePaise, { decimals: false })
+                      : '—'}
+                  </td>
+                  <td
+                    className={cn(
+                      'py-2 pl-4 text-right tabular-nums whitespace-nowrap',
+                      row.gainPct != null &&
+                        (row.gainPaise >= 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-destructive'),
+                    )}
+                  >
+                    {gainCell(row.gainPaise, row.gainPct)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="font-semibold">
+                <td className="py-2 pr-3">Total</td>
+                <td className="py-2 pl-4 text-right tabular-nums whitespace-nowrap">
+                  {formatPaise(report.totalInvestedPaise, { decimals: false })}
+                </td>
+                <td className="py-2 pl-4 text-right tabular-nums whitespace-nowrap">
+                  {formatPaise(report.totalCurrentPaise, { decimals: false })}
+                </td>
+                <td
+                  className={cn(
+                    'py-2 pl-4 text-right tabular-nums whitespace-nowrap',
+                    report.totalGainPct != null &&
+                      (totalUp
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-destructive'),
+                  )}
+                >
+                  {gainCell(report.totalGainPaise, report.totalGainPct)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </CardContent>
     </Card>
