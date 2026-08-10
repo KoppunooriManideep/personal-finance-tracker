@@ -72,6 +72,7 @@ import type {
   MonthlyDatum,
   TrendDatum,
 } from '@/features/dashboard/hooks/use-dashboard-data'
+import { NetWorthView } from '@/features/dashboard/components/net-worth-view'
 
 /** Dashboard with month-scoped reporting. Transfers are excluded from charts. */
 export function DashboardPage() {
@@ -80,7 +81,8 @@ export function DashboardPage() {
   const { data: accounts, isLoading: accountsLoading } = useAccounts()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const { data: familyMembers, isLoading: familyMembersLoading } = useFamilyMembers()
-  const { selectedOwnerId, setSelectedOwnerId } = useDashboardStore()
+  const { selectedOwnerId, setSelectedOwnerId, view, setView } =
+    useDashboardStore()
 
   const {
     data: dashboard,
@@ -131,7 +133,11 @@ export function DashboardPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Dashboard"
-        description="Income, expenses and recent activity at a glance."
+        description={
+          view === 'networth'
+            ? 'Everything you own, across accounts and investments.'
+            : 'Income, expenses and recent activity at a glance.'
+        }
         actions={
           <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center sm:w-auto">
             {/* Desktop View Switcher (Chips) */}
@@ -244,40 +250,64 @@ export function DashboardPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="space-y-0 shrink-0 w-[150px]">
-                <Label htmlFor="dashboard-month-mobile" className="sr-only">
+              {view === 'spending' ? (
+                <div className="space-y-0 shrink-0 w-[150px]">
+                  <Label htmlFor="dashboard-month-mobile" className="sr-only">
+                    Month
+                  </Label>
+                  <Input
+                    id="dashboard-month-mobile"
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(event) => {
+                      if (event.target.value) setSelectedMonth(event.target.value)
+                    }}
+                    className="h-9 w-full"
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {/* Desktop Month Selector */}
+            {view === 'spending' ? (
+              <div className="hidden sm:block space-y-1.5 shrink-0">
+                <Label htmlFor="dashboard-month" className="sr-only">
                   Month
                 </Label>
                 <Input
-                  id="dashboard-month-mobile"
+                  id="dashboard-month"
                   type="month"
                   value={selectedMonth}
                   onChange={(event) => {
                     if (event.target.value) setSelectedMonth(event.target.value)
                   }}
-                  className="h-9 w-full"
+                  className="w-[140px]"
                 />
               </div>
-            </div>
-
-            {/* Desktop Month Selector */}
-            <div className="hidden sm:block space-y-1.5 shrink-0">
-              <Label htmlFor="dashboard-month" className="sr-only">
-                Month
-              </Label>
-              <Input
-                id="dashboard-month"
-                type="month"
-                value={selectedMonth}
-                onChange={(event) => {
-                  if (event.target.value) setSelectedMonth(event.target.value)
-                }}
-                className="w-[140px]"
-              />
-            </div>
+            ) : null}
           </div>
         }
       />
+
+      {/* Lens toggle: monthly cash-flow vs net worth */}
+      <div className="bg-muted inline-flex rounded-lg p-1">
+        {(['spending', 'networth'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            aria-pressed={view === v}
+            className={cn(
+              'cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+              view === v
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {v === 'spending' ? 'Spending' : 'Net worth'}
+          </button>
+        ))}
+      </div>
 
       {selectedOwnerId && selectedMember && (
         <div className="bg-sky-500/5 text-sky-700 dark:text-sky-300 border border-sky-500/10 rounded-lg p-3 text-xs flex items-center gap-2">
@@ -288,7 +318,9 @@ export function DashboardPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {view === 'networth' ? (
+        <NetWorthView />
+      ) : isLoading ? (
         <LoadingSpinner />
       ) : isError ? (
         <ErrorState
