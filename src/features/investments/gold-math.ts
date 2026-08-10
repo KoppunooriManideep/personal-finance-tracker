@@ -36,6 +36,18 @@ export interface GoldHoldingInput {
   rewardValuePaise: number
   /** Vouchers + wallet credits + SuperCoins used, in paise. */
   voucherSavingsPaise: number
+  /**
+   * Jewellery cost breakdown — each a PART of priceTotalPaise, not added on
+   * top. Optional; absent (undefined) is treated as 0. GST is a percentage of
+   * the (GST-inclusive) total, so its rupee amount is derived, not stored.
+   */
+  makingChargesPaise?: number
+  vaPaise?: number
+  stoneChargesPaise?: number
+  /** GST rate on this purchase, as a percentage (e.g. 3 for 3%). */
+  gstPercent?: number
+  /** Discount applied before GST; already baked into priceTotalPaise. */
+  discountPaise?: number
 }
 
 /** Derived, display-ready metrics for one gold line. */
@@ -83,6 +95,33 @@ export function pureWeightMg(h: GoldHoldingInput): number {
 /** Sum of every reward that lowers the effective cost, in paise. */
 export function totalBenefitsPaise(h: GoldHoldingInput): number {
   return h.cashbackPaise + h.rewardValuePaise + h.voucherSavingsPaise
+}
+
+/**
+ * GST paid on a line, in paise. The stored price is GST-inclusive, so the tax
+ * portion is total × rate / (100 + rate). Zero when no GST rate is recorded.
+ */
+export function gstAmountPaise(h: GoldHoldingInput): number {
+  const rate = h.gstPercent ?? 0
+  if (rate <= 0) return 0
+  return Math.round((h.priceTotalPaise * rate) / (100 + rate))
+}
+
+/**
+ * Non-metal premium on a line, in paise: making + value-addition + stones + GST,
+ * LESS any discount (which is already baked into priceTotalPaise). This is the
+ * true amount paid over and above the gold's metal value, so it reconciles:
+ *   priceTotal − chargesPaise ≈ gold value at purchase.
+ * All components are part of priceTotalPaise, never added on top.
+ */
+export function chargesPaise(h: GoldHoldingInput): number {
+  return (
+    (h.makingChargesPaise ?? 0) +
+    (h.vaPaise ?? 0) +
+    (h.stoneChargesPaise ?? 0) +
+    gstAmountPaise(h) -
+    (h.discountPaise ?? 0)
+  )
 }
 
 /** What the gold really cost after benefits, in paise (may be negative). */
@@ -150,6 +189,10 @@ export interface GoldPortfolioSummary {
   investedPaise: number
   benefitsPaise: number
   effectiveCostPaise: number
+  /** Non-metal premium across the portfolio (making + VA + stones + GST − discount). */
+  chargesPaise: number
+  /** Total discounts applied across the portfolio (informational). */
+  discountPaise: number
   currentValuePaise: number
   gainPaise: number
   gainPct: number | null
@@ -190,6 +233,8 @@ export function summarizeGoldPortfolio(
   let invested = 0
   let benefits = 0
   let effective = 0
+  let charges = 0
+  let discount = 0
   let current = 0
 
   const rows = holdings.map((h) => {
@@ -199,6 +244,8 @@ export function summarizeGoldPortfolio(
     invested += s.investedPaise
     benefits += s.benefitsPaise
     effective += s.effectiveCostPaise
+    charges += chargesPaise(h)
+    discount += h.discountPaise ?? 0
     current += s.currentValuePaise
     return { h, s }
   })
@@ -212,6 +259,8 @@ export function summarizeGoldPortfolio(
     investedPaise: invested,
     benefitsPaise: benefits,
     effectiveCostPaise: effective,
+    chargesPaise: charges,
+    discountPaise: discount,
     currentValuePaise: current,
     gainPaise: gain,
     gainPct: effective > 0 ? (gain / effective) * 100 : null,

@@ -45,6 +45,11 @@ export function finenessLabel(fineness: number): string {
   )
 }
 
+/** Short karat label for chips/breakdowns, e.g. 916 → "22K", 999 → "24K". */
+export function karatLabel(fineness: number): string {
+  return `${Math.round((fineness / 999) * 24)}K`
+}
+
 /** Distinct-ish gold-toned palette for allocation slices. */
 export const ALLOCATION_COLORS = [
   '#d4a017',

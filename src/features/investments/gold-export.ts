@@ -22,6 +22,7 @@ const CSV_HEADERS = [
   'VA (INR)',
   'Stones (INR)',
   'GST %',
+  'Discount (INR)',
   'Tags',
   'Notes',
 ]
@@ -61,6 +62,7 @@ export function buildGoldCsv(
       isJewellery ? money(h.vaPaise) : '',
       isJewellery ? money(h.stoneChargesPaise) : '',
       isJewellery && h.gstPercent > 0 ? String(h.gstPercent) : '',
+      isJewellery ? money(h.discountPaise) : '',
       h.tags.join('; '),
       h.notes ?? '',
     ]

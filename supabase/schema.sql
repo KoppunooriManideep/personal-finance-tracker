@@ -1060,6 +1060,7 @@ create table if not exists public.gold_holdings (
   stone_charges_paise    bigint not null default 0 check (stone_charges_paise >= 0),
   gst_percent            numeric(5,2) not null default 0
                            check (gst_percent >= 0 and gst_percent <= 100),
+  discount_paise         bigint not null default 0 check (discount_paise >= 0),
   website                text,
   brand                  text,
   notes                  text,
@@ -1070,7 +1071,6 @@ create table if not exists public.gold_holdings (
 );
 alter table public.gold_holdings drop column if exists payment_method;
 alter table public.gold_holdings drop column if exists card;
-alter table public.gold_holdings drop column if exists discount_paise;
 
 create table if not exists public.gold_spot (
   family_id              uuid primary key references public.families (id) on delete cascade,

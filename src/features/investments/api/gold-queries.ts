@@ -26,6 +26,8 @@ export interface GoldHolding {
   stoneChargesPaise: number
   /** GST rate on this purchase, as a percentage (e.g. 3 for 3%). */
   gstPercent: number
+  /** Discount applied before GST (already baked into priceTotalPaise). */
+  discountPaise: number
   website: string | null
   brand: string | null
   notes: string | null
@@ -48,7 +50,7 @@ export async function fetchGoldHoldings(
   const { data, error } = await supabase
     .from('gold_holdings')
     .select(
-      'id, owner_id, form, name, fineness, weight_mg, quantity, purchase_date, price_total_paise, cashback_paise, reward_value_paise, voucher_savings_paise, making_charges_paise, va_paise, stone_charges_paise, gst_percent, website, brand, notes, tags',
+      'id, owner_id, form, name, fineness, weight_mg, quantity, purchase_date, price_total_paise, cashback_paise, reward_value_paise, voucher_savings_paise, making_charges_paise, va_paise, stone_charges_paise, gst_percent, discount_paise, website, brand, notes, tags',
     )
     .eq('family_id', familyId)
     .is('deleted_at', null)
@@ -74,6 +76,7 @@ export async function fetchGoldHoldings(
     vaPaise: row.va_paise,
     stoneChargesPaise: row.stone_charges_paise,
     gstPercent: Number(row.gst_percent),
+    discountPaise: row.discount_paise,
     website: row.website ?? null,
     brand: row.brand ?? null,
     notes: row.notes ?? null,

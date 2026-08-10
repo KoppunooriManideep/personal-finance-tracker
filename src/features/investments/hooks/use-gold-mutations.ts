@@ -36,6 +36,7 @@ export function goldFormToWrite(values: GoldFormValues): GoldHoldingWrite {
     vaPaise: values.form === 'jewellery' ? money(values.va) : 0,
     stoneChargesPaise: values.form === 'jewellery' ? money(values.stoneCharges) : 0,
     gstPercent: values.form === 'jewellery' ? (values.gstPercent ?? 0) : 0,
+    discountPaise: values.form === 'jewellery' ? money(values.discount) : 0,
     website: nullable(values.website),
     brand: nullable(values.brand),
     notes: nullable(values.notes),

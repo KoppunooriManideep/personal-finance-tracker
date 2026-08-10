@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
+  chargesPaise,
   currentValuePaise,
   effectiveCostPaise,
+  gstAmountPaise,
   pureWeightMg,
   summarizeGoldHolding,
   summarizeGoldPortfolio,
@@ -47,6 +49,51 @@ describe('effectiveCostPaise', () => {
       voucherSavingsPaise: 30_000,
     })
     expect(effectiveCostPaise(h)).toBe(4_900_000) // 5,000,000 − 100,000
+  })
+})
+
+describe('gstAmountPaise', () => {
+  it('extracts GST from a GST-inclusive total', () => {
+    // ₹1,03,000 total at 3% GST → tax = 103000 × 3/103 = ₹3,000
+    expect(gstAmountPaise(gold({ priceTotalPaise: 10_300_000, gstPercent: 3 }))).toBe(
+      300_000,
+    )
+  })
+
+  it('is zero when no GST rate is recorded', () => {
+    expect(gstAmountPaise(gold({ priceTotalPaise: 5_000_000 }))).toBe(0)
+  })
+})
+
+describe('chargesPaise', () => {
+  it('sums making, VA, stones and derived GST', () => {
+    const h = gold({
+      priceTotalPaise: 10_300_000,
+      makingChargesPaise: 1_000_000,
+      vaPaise: 200_000,
+      stoneChargesPaise: 50_000,
+      gstPercent: 3, // → ₹3,000 = 300_000 paise
+    })
+    expect(chargesPaise(h)).toBe(1_550_000)
+  })
+
+  it('nets out a discount to give the true non-gold premium', () => {
+    // Mirrors a real jewellery invoice: paid ₹1,78,920 all-in, of which
+    // making 18,985 + stone 1,815 + GST (3% of total) − discount 5,254.
+    const h = gold({
+      priceTotalPaise: 17_892_000,
+      makingChargesPaise: 1_898_500,
+      stoneChargesPaise: 181_500,
+      gstPercent: 3,
+      discountPaise: 525_400,
+    })
+    // gst = round(17_892_000 × 3 / 103) = 521_126
+    // charges = 1_898_500 + 181_500 + 521_126 − 525_400 = 2_075_726
+    expect(chargesPaise(h)).toBe(2_075_726)
+  })
+
+  it('is zero for a plain coin with no charges', () => {
+    expect(chargesPaise(gold({ priceTotalPaise: 5_000_000 }))).toBe(0)
   })
 })
 
@@ -109,6 +156,24 @@ describe('summarizeGoldPortfolio', () => {
     expect(p.effectiveCostPaise).toBe(10_950_000)
     expect(p.currentValuePaise).toBe(17_318_000) // 9,990,000 + 7,328,000
     expect(p.gainPaise).toBe(6_368_000)
+  })
+
+  it('totals non-metal charges and discounts across the portfolio', () => {
+    const p = summarizeGoldPortfolio(
+      [
+        gold({
+          priceTotalPaise: 10_300_000,
+          makingChargesPaise: 1_000_000,
+          gstPercent: 3,
+          discountPaise: 100_000,
+        }),
+        gold({ priceTotalPaise: 5_000_000 }), // plain coin, no charges
+      ],
+      SPOT,
+    )
+    // 1,000,000 making + 300,000 GST − 100,000 discount
+    expect(p.chargesPaise).toBe(1_200_000)
+    expect(p.discountPaise).toBe(100_000)
   })
 
   it('breaks allocation down by form, largest value first', () => {

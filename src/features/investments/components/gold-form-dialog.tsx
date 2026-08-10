@@ -63,6 +63,7 @@ function emptyDefaults(): GoldFormValues {
     va: undefined,
     stoneCharges: undefined,
     gstPercent: undefined,
+    discount: undefined,
     website: '',
     brand: '',
     tags: '',
@@ -113,6 +114,7 @@ export function GoldFormDialog({
             va: paiseToRupees(holding.vaPaise) || undefined,
             stoneCharges: paiseToRupees(holding.stoneChargesPaise) || undefined,
             gstPercent: holding.gstPercent || undefined,
+            discount: paiseToRupees(holding.discountPaise) || undefined,
             website: holding.website ?? '',
             brand: holding.brand ?? '',
             tags: holding.tags.join(', '),
@@ -238,7 +240,11 @@ export function GoldFormDialog({
                 <Field label="Purchase date" error={errors.purchaseDate?.message}>
                   <Input type="date" {...register('purchaseDate')} />
                 </Field>
-                <Field label="Total price (₹)" error={errors.priceTotal?.message}>
+                <Field
+                  label="Total paid (₹)"
+                  hint="All-in amount you actually paid (incl. making, stones & GST)."
+                  error={errors.priceTotal?.message}
+                >
                   <Input
                     type="number"
                     step="0.01"
@@ -271,7 +277,7 @@ export function GoldFormDialog({
             {isJewellery ? (
               <Section
                 label="Jewellery charges"
-                hint="Optional breakdown of the price — making/VA, stones & GST aren't recoverable in gold value."
+                hint="Optional breakdown of the total paid — making/VA, stones & GST aren't recoverable in gold value; a discount reduces them."
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Making charges (₹)">
@@ -308,6 +314,15 @@ export function GoldFormDialog({
                       inputMode="decimal"
                       placeholder="e.g. 3"
                       {...register('gstPercent', { setValueAs: asOptionalNumber })}
+                    />
+                  </Field>
+                  <Field label="Discount (₹)">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      {...register('discount', { setValueAs: asOptionalNumber })}
                     />
                   </Field>
                 </div>
@@ -454,10 +469,12 @@ function Section({
 
 function Field({
   label,
+  hint,
   error,
   children,
 }: {
   label: string
+  hint?: string
   error?: string
   children: ReactNode
 }) {
@@ -465,6 +482,7 @@ function Field({
     <div className="space-y-1.5">
       <Label>{label}</Label>
       {children}
+      {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </div>
   )

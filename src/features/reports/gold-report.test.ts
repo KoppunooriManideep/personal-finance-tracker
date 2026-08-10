@@ -20,6 +20,7 @@ function gold(overrides: Partial<GoldHolding> = {}): GoldHolding {
     vaPaise: 0,
     stoneChargesPaise: 0,
     gstPercent: 0,
+    discountPaise: 0,
     website: null,
     brand: null,
     notes: null,

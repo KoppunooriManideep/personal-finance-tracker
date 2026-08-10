@@ -521,6 +521,7 @@ export interface Database {
           va_paise: number
           stone_charges_paise: number
           gst_percent: number
+          discount_paise: number
           website: string | null
           brand: string | null
           notes: string | null
@@ -547,6 +548,7 @@ export interface Database {
           va_paise?: number
           stone_charges_paise?: number
           gst_percent?: number
+          discount_paise?: number
           website?: string | null
           brand?: string | null
           notes?: string | null
@@ -573,6 +575,7 @@ export interface Database {
           va_paise?: number
           stone_charges_paise?: number
           gst_percent?: number
+          discount_paise?: number
           website?: string | null
           brand?: string | null
           notes?: string | null

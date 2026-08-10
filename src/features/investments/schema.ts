@@ -45,6 +45,7 @@ export const goldSchema = z.object({
     .min(0, 'Cannot be negative')
     .max(100, 'Too high')
     .optional(),
+  discount: optionalMoney,
   // Store / provenance (optional).
   website: z.string().trim().max(100, 'Too long').optional(),
   brand: z.string().trim().max(100, 'Too long').optional(),

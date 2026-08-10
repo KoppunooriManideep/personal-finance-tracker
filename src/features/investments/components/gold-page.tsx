@@ -52,10 +52,20 @@ import { useGoldSpot } from '@/features/investments/hooks/use-gold-spot'
 import { useDeleteGoldHolding } from '@/features/investments/hooks/use-gold-mutations'
 import { summarizeGoldPortfolio } from '@/features/investments/gold-math'
 import {
-  GOLD_FORMS,
   finenessLabel,
   formatGrams,
+  karatLabel,
 } from '@/features/investments/config'
+import type { GoldAllocationSlice } from '@/features/investments/gold-math'
+
+/** Quick view switch: all gold, only jewellery, or only bullion (coins + bars). */
+type GoldCategory = 'all' | 'jewellery' | 'bullion'
+
+const CATEGORY_TABS: { value: GoldCategory; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'jewellery', label: 'Jewellery' },
+  { value: 'bullion', label: 'Coins & bars' },
+]
 import { GoldHoldingCard } from '@/features/investments/components/gold-holding-card'
 import { GoldFormDialog } from '@/features/investments/components/gold-form-dialog'
 import { GoldSpotEditor } from '@/features/investments/components/gold-spot-editor'
@@ -63,14 +73,12 @@ import { buildGoldCsv, goldCsvFilename } from '@/features/investments/gold-expor
 import type { GoldHolding } from '@/features/investments/api/gold-queries'
 
 interface GoldFilters {
-  form: string
   purity: string
   owner: string
   year: string
 }
 
 const EMPTY_GOLD_FILTERS: GoldFilters = {
-  form: 'all',
   purity: 'all',
   owner: 'all',
   year: 'all',
@@ -96,6 +104,7 @@ export function GoldPage() {
   const [toDelete, setToDelete] = useState<GoldHolding | null>(null)
 
   const [filters, setFilters] = useState<GoldFilters>(EMPTY_GOLD_FILTERS)
+  const [category, setCategory] = useState<GoldCategory>('all')
 
   const spotPaise = spot?.pricePaisePerGram ?? 0
   const hasRate = spotPaise > 0
@@ -131,7 +140,10 @@ export function GoldPage() {
     () =>
       all.filter(
         (h) =>
-          (filters.form === 'all' || h.form === filters.form) &&
+          (category === 'all' ||
+            (category === 'jewellery'
+              ? h.form === 'jewellery'
+              : h.form === 'coin' || h.form === 'bar')) &&
           (filters.purity === 'all' || h.fineness === Number(filters.purity)) &&
           (filters.owner === 'all' ||
             (filters.owner === 'shared'
@@ -139,7 +151,7 @@ export function GoldPage() {
               : h.ownerId === filters.owner)) &&
           (filters.year === 'all' || h.purchaseDate.slice(0, 4) === filters.year),
       ),
-    [all, filters],
+    [all, filters, category],
   )
 
   const activeFilterCount = Object.values(filters).filter(
@@ -244,12 +256,36 @@ export function GoldPage() {
           <GoldSpotEditor spot={spot ?? null} canManage={canManage} />
 
           {hasHoldings ? (
+            <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1 print:hidden">
+              {CATEGORY_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setCategory(tab.value)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-sm transition-colors',
+                    category === tab.value
+                      ? 'bg-background text-foreground font-medium shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {hasHoldings ? (
             <PortfolioSummary
-              investedPaise={portfolio.effectiveCostPaise}
+              spentPaise={portfolio.investedPaise}
+              chargesPaise={portfolio.chargesPaise}
+              discountPaise={portfolio.discountPaise}
               currentValuePaise={portfolio.currentValuePaise}
               gainPaise={portfolio.gainPaise}
               gainPct={portfolio.gainPct}
               totalWeightMg={portfolio.totalWeightMg}
+              pureWeightMg={portfolio.pureWeightMg}
+              byPurity={portfolio.byPurity}
               hasRate={hasRate}
             />
           ) : null}
@@ -361,22 +397,6 @@ function GoldFilterFields({
   const trigger = cn('w-full', triggerClassName)
   return (
     <>
-      <FilterField label="Type">
-        <Select value={filters.form} onValueChange={(v) => onChange({ form: v })}>
-          <SelectTrigger className={trigger}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {GOLD_FORMS.map((f) => (
-              <SelectItem key={f.value} value={f.value}>
-                {f.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FilterField>
-
       <FilterField label="Purity">
         <Select value={filters.purity} onValueChange={(v) => onChange({ purity: v })}>
           <SelectTrigger className={trigger}>
@@ -453,7 +473,7 @@ function GoldFiltersCard({
       {/* Desktop: inline card */}
       <Card className="hidden print:hidden md:block">
         <CardContent className="space-y-3 p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <GoldFilterFields {...fields} />
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -525,77 +545,219 @@ function GoldFiltersCard({
   )
 }
 
-/** Kite-style summary: Invested / Current on top, P&L with a % pill below. */
+/**
+ * Gold summary. The hero number is the WEIGHT accumulated (gross grams, with
+ * pure 24K-equivalent grams beneath) — that's what the user cares about most,
+ * followed by a clear per-karat breakdown. Spent (with the making/VA/GST
+ * portion called out), Current and P&L sit below.
+ */
 export function PortfolioSummary({
-  investedPaise,
+  spentPaise,
+  chargesPaise,
+  discountPaise,
   currentValuePaise,
   gainPaise,
   gainPct,
   totalWeightMg,
+  pureWeightMg,
+  byPurity,
   hasRate,
 }: {
-  investedPaise: number
+  spentPaise: number
+  chargesPaise: number
+  discountPaise: number
   currentValuePaise: number
   gainPaise: number
   gainPct: number | null
   totalWeightMg: number
+  pureWeightMg: number
+  byPurity: GoldAllocationSlice[]
   hasRate: boolean
 }) {
   const positive = gainPaise >= 0
+  const gainColor = positive
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-destructive'
+  // Grams per purity, heaviest karat first (24K before 22K…) for easy counting.
+  const purityRows = [...byPurity].sort((a, b) => Number(b.key) - Number(a.key))
+
+  // With jewellery charges present, split the spend into the recoverable metal
+  // cost vs the all-in total, and show BOTH gains: gold-only (did the metal
+  // appreciate?) and net (am I ahead after making/stones/GST?).
+  const hasCharges = chargesPaise > 0
+  const goldCostPaise = spentPaise - chargesPaise
+  const goldGainPaise = currentValuePaise - goldCostPaise
+  const goldGainPct =
+    goldCostPaise > 0 ? (goldGainPaise / goldCostPaise) * 100 : null
+  const netGainPaise = currentValuePaise - spentPaise
+  const netGainPct = spentPaise > 0 ? (netGainPaise / spentPaise) * 100 : null
   return (
     <Card>
-      <CardContent className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-4">
+      <CardContent className="space-y-4 p-4 sm:p-5">
+        {/* Hero: grams accumulated */}
+        <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-muted-foreground text-xs">Invested</p>
-            <p className="text-xl font-semibold tabular-nums break-words">
-              {formatPaise(investedPaise, { decimals: false })}
+            <p className="text-muted-foreground text-xs">Gold accumulated</p>
+            <p className="text-3xl font-bold tabular-nums break-words text-amber-600 dark:text-amber-400">
+              {formatGrams(totalWeightMg)}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              ≈ {formatGrams(pureWeightMg)} pure (24K)
             </p>
           </div>
-          <div className="min-w-0 text-right">
-            <p className="text-muted-foreground text-xs">Current</p>
-            <p className="text-xl font-semibold tabular-nums break-words">
-              {hasRate ? formatPaise(currentValuePaise, { decimals: false }) : '—'}
-            </p>
+          <div className="bg-amber-500/10 shrink-0 rounded-full p-3">
+            <Gem className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t pt-3">
-          <span className="text-muted-foreground text-sm">
-            P&amp;L · {formatGrams(totalWeightMg)}
-          </span>
-          {hasRate ? (
-            <span className="flex items-center gap-2">
-              <span
-                className={cn(
-                  'text-base font-semibold tabular-nums',
-                  positive
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-destructive',
-                )}
+        {/* Grams by purity — 22K jewellery vs 24K coins, counted separately. */}
+        {purityRows.length > 1 ? (
+          <div className="grid grid-cols-2 gap-2">
+            {purityRows.map((row) => (
+              <div
+                key={row.key}
+                className="border-amber-500/25 bg-amber-500/5 flex items-center justify-between rounded-lg border px-3 py-2"
               >
-                {positive ? '+' : ''}
-                {formatPaise(gainPaise, { decimals: false })}
-              </span>
-              {gainPct != null ? (
-                <span
-                  className={cn(
-                    'rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums',
-                    positive
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-destructive/10 text-destructive',
-                  )}
-                >
-                  {positive ? '+' : ''}
-                  {gainPct.toFixed(2)}%
+                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                  {karatLabel(Number(row.key))}
                 </span>
-              ) : null}
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-sm">Set the gold rate</span>
-          )}
-        </div>
+                <span className="text-sm font-medium tabular-nums">
+                  {formatGrams(row.weightMg)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Money. Jewellery (has charges) → split gold cost vs total paid, with
+            gold-only and net P&L. Coins/bars (no charges) → simple Spent/Current/P&L. */}
+        {hasCharges ? (
+          <div className="space-y-3 border-t pt-3">
+            <div className="space-y-1.5">
+              <SummaryRow
+                label="Total paid"
+                value={formatPaise(spentPaise, { decimals: false })}
+              />
+              <SummaryRow
+                label="Gold cost"
+                value={formatPaise(goldCostPaise, { decimals: false })}
+              />
+              <SummaryRow
+                label="Current"
+                value={
+                  hasRate
+                    ? formatPaise(currentValuePaise, { decimals: false })
+                    : '—'
+                }
+              />
+            </div>
+            {hasRate ? (
+              <div className="space-y-1.5 border-t pt-3">
+                <SummaryRow
+                  label="Gold P&L"
+                  value={formatSignedPnl(goldGainPaise, goldGainPct)}
+                  valueClassName={pnlColor(goldGainPaise)}
+                />
+                <SummaryRow
+                  label="Net P&L"
+                  value={formatSignedPnl(netGainPaise, netGainPct)}
+                  valueClassName={pnlColor(netGainPaise)}
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground border-t pt-3 text-sm">
+                Set the gold rate to see value & P&L.
+              </p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              Total paid includes{' '}
+              {formatPaise(chargesPaise, { decimals: false })} in making, stones
+              &amp; GST
+              {discountPaise > 0
+                ? ` (after ${formatPaise(discountPaise, { decimals: false })} discount)`
+                : ''}
+              .
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3 border-t pt-3">
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">Spent</p>
+              <p className="truncate text-sm font-semibold tabular-nums">
+                {formatPaise(spentPaise, { decimals: false })}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">Current</p>
+              <p className="truncate text-sm font-semibold tabular-nums">
+                {hasRate
+                  ? formatPaise(currentValuePaise, { decimals: false })
+                  : '—'}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">P&amp;L</p>
+              {hasRate ? (
+                <>
+                  <p
+                    className={cn(
+                      'truncate text-sm font-semibold tabular-nums',
+                      gainColor,
+                    )}
+                  >
+                    {positive ? '+' : ''}
+                    {formatPaise(gainPaise, { decimals: false })}
+                  </p>
+                  {gainPct != null ? (
+                    <p className={cn('text-xs tabular-nums', gainColor)}>
+                      {positive ? '+' : ''}
+                      {gainPct.toFixed(1)}%
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">Set rate</p>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
+  )
+}
+
+/** Tailwind text colour for a gain/loss amount. */
+function pnlColor(gainPaise: number): string {
+  return gainPaise >= 0
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-destructive'
+}
+
+/** "+₹8,423 (+5.3%)" — signed amount with an optional percentage. */
+function formatSignedPnl(gainPaise: number, pct: number | null): string {
+  const sign = gainPaise >= 0 ? '+' : ''
+  const amount = `${sign}${formatPaise(gainPaise, { decimals: false })}`
+  return pct != null ? `${amount} (${sign}${pct.toFixed(1)}%)` : amount
+}
+
+/** A label-left / value-right row for the split jewellery money breakdown. */
+function SummaryRow({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string
+  value: string
+  valueClassName?: string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground text-sm">{label}</span>
+      <span
+        className={cn('text-sm font-semibold tabular-nums', valueClassName)}
+      >
+        {value}
+      </span>
+    </div>
   )
 }
