@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Loader2, Users } from 'lucide-react'
@@ -56,11 +56,24 @@ export function AccountFormDialog({
     handleSubmit,
     control,
     reset,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: emptyDefaults,
   })
+
+  // Mobile number keypads have no minus key, so the sign is a toggle instead of
+  // something typed. useWatch keeps the +/− highlight in sync (compiler-safe).
+  const openingBalance = useWatch({ control, name: 'openingBalance' })
+  const isNegative = (openingBalance ?? 0) < 0
+  const setSign = (negative: boolean) =>
+    setValue(
+      'openingBalance',
+      (negative ? -1 : 1) * Math.abs(getValues('openingBalance') || 0),
+      { shouldValidate: true },
+    )
 
   // Sync form values whenever the dialog opens (for create or a specific edit).
   useEffect(() => {
@@ -244,22 +257,55 @@ export function AccountFormDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="account-balance">Opening balance (₹)</Label>
-              <Input
-                id="account-balance"
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                placeholder="0.00"
-                {...register('openingBalance', { valueAsNumber: true })}
-              />
+              <div className="flex gap-2">
+                <div className="border-input flex shrink-0 overflow-hidden rounded-md border">
+                  <button
+                    type="button"
+                    onClick={() => setSign(false)}
+                    aria-pressed={!isNegative}
+                    aria-label="Positive balance"
+                    className={cn(
+                      'w-10 text-base font-medium transition-colors',
+                      !isNegative
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent',
+                    )}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSign(true)}
+                    aria-pressed={isNegative}
+                    aria-label="Negative balance — money owed"
+                    className={cn(
+                      'border-input w-10 border-l text-base font-medium transition-colors',
+                      isNegative
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'text-muted-foreground hover:bg-accent',
+                    )}
+                  >
+                    −
+                  </button>
+                </div>
+                <Input
+                  id="account-balance"
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="flex-1"
+                  {...register('openingBalance', { valueAsNumber: true })}
+                />
+              </div>
               {errors.openingBalance ? (
                 <p className="text-destructive text-sm">
                   {errors.openingBalance.message}
                 </p>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  Current balance in this account today. Use a negative value for
-                  credit card dues.
+                  Balance today. Tap − for money owed (e.g. a credit-card
+                  balance) — no minus key needed on mobile.
                 </p>
               )}
             </div>
