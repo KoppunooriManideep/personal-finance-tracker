@@ -55,15 +55,22 @@ export function aggregateGoldForReport(
 
   const portfolio = summarizeGoldPortfolio(scoped, spotPaisePerGram)
 
+  // Basis = total paid (raw price_total), matching the gold detail page's
+  // "Total paid" + Net P&L and the Investments hub, so all three agree.
+  const gainPaise = portfolio.currentValuePaise - portfolio.investedPaise
+
   return {
     count: scoped.length,
     boughtCount,
     boughtSpentPaise,
     boughtWeightMg,
-    investedPaise: portfolio.effectiveCostPaise,
+    investedPaise: portfolio.investedPaise,
     currentValuePaise: portfolio.currentValuePaise,
-    gainPaise: portfolio.gainPaise,
-    gainPct: portfolio.gainPct,
+    gainPaise,
+    gainPct:
+      portfolio.investedPaise > 0
+        ? (gainPaise / portfolio.investedPaise) * 100
+        : null,
     totalWeightMg: portfolio.totalWeightMg,
     hasRate: spotPaisePerGram > 0,
   }

@@ -113,10 +113,19 @@ export function InvestmentsPage() {
       color: '#d4a017',
       to: paths.investmentsGold,
       available: true,
-      investedPaise: gold.effectiveCostPaise,
-      currentValuePaise: hasRate ? gold.currentValuePaise : gold.effectiveCostPaise,
-      gainPaise: hasRate ? gold.gainPaise : 0,
-      gainPct: hasRate ? gold.gainPct : null,
+      // Basis = total paid (raw price_total), so this matches the gold detail
+      // page's "Total paid" + Net P&L. (Cashback/rewards are informational and
+      // deliberately NOT netted here, else it wouldn't reconcile with the
+      // detail card, which decomposes the raw price into gold cost + charges.)
+      investedPaise: gold.investedPaise,
+      currentValuePaise: hasRate ? gold.currentValuePaise : gold.investedPaise,
+      gainPaise: hasRate ? gold.currentValuePaise - gold.investedPaise : 0,
+      gainPct:
+        hasRate && gold.investedPaise > 0
+          ? ((gold.currentValuePaise - gold.investedPaise) /
+              gold.investedPaise) *
+            100
+          : null,
     },
     marketClass(
       'stocks',
