@@ -1,4 +1,5 @@
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { FileText, MoreVertical, Paperclip, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { formatPaise } from '@/lib/money'
 import { finenessLabel, formLabel, formatGrams } from '@/features/investments/config'
 import { summarizeGoldHolding } from '@/features/investments/gold-math'
+import { getGoldReceiptUrl } from '@/features/investments/api/gold-receipts'
 import type { GoldHolding } from '@/features/investments/api/gold-queries'
 
 interface GoldHoldingCardProps {
@@ -45,6 +47,17 @@ export function GoldHoldingCard({
     ? 'text-emerald-600 dark:text-emerald-400'
     : 'text-destructive'
 
+  const handleViewBill = async () => {
+    if (!holding.receiptPath) return
+    try {
+      const url = await getGoldReceiptUrl(holding.receiptPath)
+      window.open(url, '_blank', 'noopener')
+    } catch (error) {
+      toast.error('Could not open the bill')
+      console.error(error)
+    }
+  }
+
   const jewelleryBreakdown =
     holding.form === 'jewellery'
       ? [
@@ -76,7 +89,15 @@ export function GoldHoldingCard({
 
       {/* line 2: name  ·······  gain amount */}
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-sm font-medium">{title}</span>
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="truncate text-sm font-medium">{title}</span>
+          {holding.receiptPath ? (
+            <Paperclip
+              className="text-muted-foreground h-3 w-3 shrink-0"
+              aria-label="Bill attached"
+            />
+          ) : null}
+        </span>
         {hasRate ? (
           <span className={cn('shrink-0 text-sm font-semibold tabular-nums', gainColor)}>
             {positive ? '+' : ''}
@@ -139,6 +160,12 @@ export function GoldHoldingCard({
                 <Pencil className="h-4 w-4" />
                 Edit
               </DropdownMenuItem>
+              {holding.receiptPath ? (
+                <DropdownMenuItem onClick={handleViewBill}>
+                  <FileText className="h-4 w-4" />
+                  View bill
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"

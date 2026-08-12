@@ -18,7 +18,10 @@ const nullable = (value: string | undefined) => value?.trim() || null
 const money = (rupees: number | undefined) => rupeesToPaise(rupees ?? 0)
 
 /** Convert validated form values into the paise/milligram DB write shape. */
-export function goldFormToWrite(values: GoldFormValues): GoldHoldingWrite {
+export function goldFormToWrite(
+  values: GoldFormValues,
+  receiptPath: string | null,
+): GoldHoldingWrite {
   return {
     ownerId: values.ownerId,
     form: values.form,
@@ -37,6 +40,7 @@ export function goldFormToWrite(values: GoldFormValues): GoldHoldingWrite {
     stoneChargesPaise: values.form === 'jewellery' ? money(values.stoneCharges) : 0,
     gstPercent: values.form === 'jewellery' ? (values.gstPercent ?? 0) : 0,
     discountPaise: values.form === 'jewellery' ? money(values.discount) : 0,
+    receiptPath,
     website: nullable(values.website),
     brand: nullable(values.brand),
     notes: nullable(values.notes),
@@ -52,6 +56,12 @@ export function goldFormToWrite(values: GoldFormValues): GoldHoldingWrite {
 const byPurchaseDate = (a: GoldHolding, b: GoldHolding) =>
   b.purchaseDate.localeCompare(a.purchaseDate)
 
+/** Form values plus the (already-uploaded) receipt path, or null for none. */
+export interface GoldMutationInput {
+  values: GoldFormValues
+  receiptPath: string | null
+}
+
 interface MutationContext {
   previous?: GoldHolding[]
 }
@@ -63,15 +73,18 @@ export function useCreateGoldHolding() {
   const queryClient = useQueryClient()
   const key = goldHoldingsQueryKey(familyId)
 
-  return useMutation<GoldHolding, Error, GoldFormValues, MutationContext>({
-    mutationFn: (values) =>
-      createGoldHolding({ familyId: familyId!, ...goldFormToWrite(values) }),
-    onMutate: async (values) => {
+  return useMutation<GoldHolding, Error, GoldMutationInput, MutationContext>({
+    mutationFn: ({ values, receiptPath }) =>
+      createGoldHolding({
+        familyId: familyId!,
+        ...goldFormToWrite(values, receiptPath),
+      }),
+    onMutate: async ({ values, receiptPath }) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<GoldHolding[]>(key)
       const optimistic: GoldHolding = {
         id: `optimistic-${crypto.randomUUID()}`,
-        ...goldFormToWrite(values),
+        ...goldFormToWrite(values, receiptPath),
       }
       queryClient.setQueryData<GoldHolding[]>(key, (old) =>
         [...(old ?? []), optimistic].sort(byPurchaseDate),
@@ -97,19 +110,19 @@ export function useUpdateGoldHolding() {
   return useMutation<
     void,
     Error,
-    { id: string; values: GoldFormValues },
+    GoldMutationInput & { id: string },
     MutationContext
   >({
-    mutationFn: ({ id, values }) =>
-      updateGoldHolding({ id, ...goldFormToWrite(values) }),
-    onMutate: async ({ id, values }) => {
+    mutationFn: ({ id, values, receiptPath }) =>
+      updateGoldHolding({ id, ...goldFormToWrite(values, receiptPath) }),
+    onMutate: async ({ id, values, receiptPath }) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<GoldHolding[]>(key)
       queryClient.setQueryData<GoldHolding[]>(key, (old) =>
         (old ?? [])
           .map((holding) =>
             holding.id === id
-              ? { id, ...goldFormToWrite(values) }
+              ? { id, ...goldFormToWrite(values, receiptPath) }
               : holding,
           )
           .sort(byPurchaseDate),

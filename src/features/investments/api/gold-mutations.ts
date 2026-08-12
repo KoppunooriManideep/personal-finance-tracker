@@ -20,6 +20,7 @@ export interface GoldHoldingWrite {
   stoneChargesPaise: number
   gstPercent: number
   discountPaise: number
+  receiptPath: string | null
   website: string | null
   brand: string | null
   notes: string | null
@@ -53,6 +54,7 @@ function toRow(input: GoldHoldingWrite) {
     stone_charges_paise: input.stoneChargesPaise,
     gst_percent: input.gstPercent,
     discount_paise: input.discountPaise,
+    receipt_path: input.receiptPath,
     website: input.website,
     brand: input.brand,
     notes: input.notes,
@@ -142,6 +144,7 @@ function toHolding(input: GoldHoldingWrite): Omit<GoldHolding, 'id'> {
     stoneChargesPaise: input.stoneChargesPaise,
     gstPercent: input.gstPercent,
     discountPaise: input.discountPaise,
+    receiptPath: input.receiptPath,
     website: input.website,
     brand: input.brand,
     notes: input.notes,

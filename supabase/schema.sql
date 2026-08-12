@@ -1061,6 +1061,7 @@ create table if not exists public.gold_holdings (
   gst_percent            numeric(5,2) not null default 0
                            check (gst_percent >= 0 and gst_percent <= 100),
   discount_paise         bigint not null default 0 check (discount_paise >= 0),
+  receipt_path           text,
   website                text,
   brand                  text,
   notes                  text,
@@ -1148,6 +1149,56 @@ drop policy if exists gold_spot_update on public.gold_spot;
 create policy gold_spot_update on public.gold_spot
   for update using (public.can_edit_family(family_id))
               with check (public.can_edit_family(family_id));
+
+-- =============================================================================
+-- STORAGE · RECEIPTS (migration 16) — private bucket for gold bills
+-- =============================================================================
+-- Path convention: '{family_id}/gold/{uuid}.{ext}'. First folder = owning
+-- family, so Storage RLS reuses is_family_member / can_edit_family.
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'receipts',
+  'receipts',
+  false,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+)
+on conflict (id) do update
+  set file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists receipts_select on storage.objects;
+create policy receipts_select on storage.objects
+  for select using (
+    bucket_id = 'receipts'
+    and public.is_family_member(((storage.foldername(name))[1])::uuid)
+  );
+
+drop policy if exists receipts_insert on storage.objects;
+create policy receipts_insert on storage.objects
+  for insert with check (
+    bucket_id = 'receipts'
+    and public.can_edit_family(((storage.foldername(name))[1])::uuid)
+  );
+
+drop policy if exists receipts_update on storage.objects;
+create policy receipts_update on storage.objects
+  for update using (
+    bucket_id = 'receipts'
+    and public.can_edit_family(((storage.foldername(name))[1])::uuid)
+  )
+  with check (
+    bucket_id = 'receipts'
+    and public.can_edit_family(((storage.foldername(name))[1])::uuid)
+  );
+
+drop policy if exists receipts_delete on storage.objects;
+create policy receipts_delete on storage.objects
+  for delete using (
+    bucket_id = 'receipts'
+    and public.can_edit_family(((storage.foldername(name))[1])::uuid)
+  );
 
 -- =============================================================================
 -- INVESTMENTS · STOCKS & MUTUAL FUNDS (migration 13) — self-contained block
