@@ -118,6 +118,14 @@ function applyParsed(
   const num = (v: number | null) =>
     typeof v === 'number' && Number.isFinite(v) ? v : undefined
   const str = (v: string | null) => (v && v.trim() ? v.trim() : undefined)
+
+  // Fold the VA%-per-item note into Notes (append once; don't duplicate on re-scan).
+  let notes = current.notes
+  if (parsed.vaNote) {
+    if (!notes) notes = parsed.vaNote
+    else if (!notes.includes(parsed.vaNote)) notes = `${notes} · ${parsed.vaNote}`
+  }
+
   return {
     ...current,
     form: parsed.form ?? current.form,
@@ -133,6 +141,7 @@ function applyParsed(
     gstPercent: num(parsed.gstPercent) ?? current.gstPercent,
     discount: num(parsed.discount) ?? current.discount,
     brand: str(parsed.brand) ?? current.brand,
+    notes,
   }
 }
 

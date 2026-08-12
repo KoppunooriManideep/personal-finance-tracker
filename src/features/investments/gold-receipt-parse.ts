@@ -29,6 +29,11 @@ export interface ParsedGoldReceipt {
   gstPercent: number | null
   discount: number | null
   brand: string | null
+  /**
+   * A ready-to-store note of each item's VA / making percentage, derived when
+   * the bill lists VA as an amount. E.g. "VA: 12% bangles, 10% necklace".
+   */
+  vaNote: string | null
 }
 
 /** Purities we snap to (matches PURITY_PRESETS in config.ts). */
@@ -48,6 +53,7 @@ export const RECEIPT_PROMPT = `You are reading an Indian jeweller's or bullion T
 - gstPercent: the TOTAL GST rate as a number (CGST + SGST, e.g. 1.5 + 1.5 = 3).
 - discount: any discount amount in rupees (applied before GST); otherwise null.
 - brand: the shop / jeweller name.
+- items: one entry PER LINE ITEM on the bill. For each item give: name (e.g. bangles, necklace, kante, ring), goldValueRupees = that item's pure gold/metal value in rupees (the "Amount" column = net weight x rate, BEFORE making/stone/GST), vaRupees = that item's making / value-addition amount in rupees, and vaPercent = the making/VA percentage ONLY if it is explicitly printed on the bill (otherwise null).
 All amounts are plain rupee numbers with no symbols or commas. Use null for anything not clearly present. Do not guess.`
 
 /** Gemini `responseSchema` (OpenAPI subset; type names are UPPERCASE). */
@@ -67,6 +73,19 @@ export const RECEIPT_SCHEMA = {
     gstPercent: { type: 'NUMBER', nullable: true },
     discount: { type: 'NUMBER', nullable: true },
     brand: { type: 'STRING', nullable: true },
+    items: {
+      type: 'ARRAY',
+      nullable: true,
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING', nullable: true },
+          goldValueRupees: { type: 'NUMBER', nullable: true },
+          vaRupees: { type: 'NUMBER', nullable: true },
+          vaPercent: { type: 'NUMBER', nullable: true },
+        },
+      },
+    },
   },
 }
 
@@ -80,6 +99,41 @@ function cleanString(value: unknown): string | null {
 function nonNegNumber(value: unknown): number | null {
   const n = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value
   return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null
+}
+
+/** "12%" / "10.5%" — one decimal, trailing .0 dropped. */
+function formatPct(pct: number): string {
+  const rounded = Math.round(pct * 10) / 10
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`
+}
+
+/**
+ * Build a "VA: 12% bangles, 10% necklace" note from the bill's line items —
+ * using a printed VA% where present, else deriving it from making ÷ gold value.
+ * Returns null when no item yields a sensible percentage.
+ */
+function buildVaNote(rawItems: unknown): string | null {
+  if (!Array.isArray(rawItems)) return null
+  const parts: string[] = []
+  for (const item of rawItems) {
+    const it = (item && typeof item === 'object' ? item : {}) as Record<
+      string,
+      unknown
+    >
+    const stated = nonNegNumber(it.vaPercent)
+    const goldValue = nonNegNumber(it.goldValueRupees)
+    const va = nonNegNumber(it.vaRupees)
+
+    let pct: number | null = stated != null && stated > 0 ? stated : null
+    if (pct == null && va != null && goldValue != null && goldValue > 0) {
+      pct = (va / goldValue) * 100
+    }
+    if (pct == null || pct <= 0 || pct > 100) continue
+
+    const name = cleanString(it.name)
+    parts.push(`${formatPct(pct)}${name ? ` ${name}` : ''}`)
+  }
+  return parts.length > 0 ? `VA: ${parts.join(', ')}` : null
 }
 
 function snapFineness(value: unknown): number | null {
@@ -129,5 +183,6 @@ export function normalizeParsedReceipt(raw: unknown): ParsedGoldReceipt {
     gstPercent,
     discount: nonNegNumber(r.discount),
     brand: cleanString(r.brand),
+    vaNote: buildVaNote(r.items),
   }
 }

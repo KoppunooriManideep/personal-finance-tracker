@@ -32,7 +32,35 @@ describe('normalizeParsedReceipt', () => {
       gstPercent: 3,
       discount: 5254,
       brand: 'Mukunda Jewellery',
+      vaNote: null,
     })
+  })
+
+  it('derives a VA % note from per-item making amounts', () => {
+    const r = normalizeParsedReceipt({
+      items: [
+        { name: 'bangles', goldValueRupees: 100000, vaRupees: 12000, vaPercent: null },
+        { name: 'necklace', goldValueRupees: 50000, vaRupees: 5000, vaPercent: null },
+      ],
+    })
+    expect(r.vaNote).toBe('VA: 12% bangles, 10% necklace')
+  })
+
+  it('uses a printed VA % when present and keeps one decimal', () => {
+    const r = normalizeParsedReceipt({
+      items: [
+        { name: 'kante', goldValueRupees: null, vaRupees: null, vaPercent: 12 },
+        { name: 'ring', goldValueRupees: 20000, vaRupees: 2100, vaPercent: null },
+      ],
+    })
+    expect(r.vaNote).toBe('VA: 12% kante, 10.5% ring')
+  })
+
+  it('has no VA note when items are missing or unusable', () => {
+    expect(normalizeParsedReceipt({}).vaNote).toBeNull()
+    expect(
+      normalizeParsedReceipt({ items: [{ name: 'x', vaRupees: 100 }] }).vaNote,
+    ).toBeNull() // no gold value → cannot derive %
   })
 
   it('strips commas from numeric strings and snaps fineness', () => {

@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -11,6 +11,11 @@ import {
   resolveQuotes,
   type QuoteItem,
 } from './src/features/investments/quotes-shared.ts'
+import {
+  RECEIPT_PROMPT,
+  RECEIPT_SCHEMA,
+  normalizeParsedReceipt,
+} from './src/features/investments/gold-receipt-parse.ts'
 
 const GOODRETURNS_URL = 'https://www.goodreturns.in/gold-rates/'
 
@@ -18,9 +23,9 @@ const GOODRETURNS_URL = 'https://www.goodreturns.in/gold-rates/'
  * Serve /api/gold-rate in the dev server so the "Live rate" button works in
  * `vite dev` too (in production this path is the Vercel Edge function in api/).
  */
-function goldRateDevApi(): Plugin {
+function devApi(geminiKey: string, geminiModel: string): Plugin {
   return {
-    name: 'dev-gold-rate-api',
+    name: 'dev-api',
     apply: 'serve',
     configureServer(server) {
       server.middlewares.use('/api/gold-rate', async (_req, res) => {
@@ -78,16 +83,110 @@ function goldRateDevApi(): Plugin {
           res.end(JSON.stringify({ error: 'Could not fetch quotes' }))
         }
       })
+
+      // /api/parse-gold-receipt — Gemini bill reader (mirrors api/parse-gold-receipt.ts).
+      server.middlewares.use('/api/parse-gold-receipt', async (req, res) => {
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+        if (!geminiKey) {
+          res.statusCode = 501
+          res.end(
+            JSON.stringify({
+              error: 'Bill reading is not configured (no GEMINI_API_KEY).',
+            }),
+          )
+          return
+        }
+        try {
+          let raw = ''
+          await new Promise<void>((resolve) => {
+            req.on('data', (chunk) => (raw += chunk))
+            req.on('end', () => resolve())
+          })
+          const body = JSON.parse(raw || '{}') as {
+            imageBase64?: string
+            mimeType?: string
+          }
+          if (!body.imageBase64 || !body.mimeType) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Send a JPG, PNG, WebP or PDF bill.' }))
+            return
+          }
+
+          const model = geminiModel || 'gemini-2.5-flash'
+          const upstream = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        inline_data: {
+                          mime_type: body.mimeType,
+                          data: body.imageBase64,
+                        },
+                      },
+                      { text: RECEIPT_PROMPT },
+                    ],
+                  },
+                ],
+                generationConfig: {
+                  temperature: 0,
+                  responseMimeType: 'application/json',
+                  responseSchema: RECEIPT_SCHEMA,
+                },
+              }),
+            },
+          )
+          if (!upstream.ok) {
+            res.statusCode = 502
+            res.end(JSON.stringify({ error: `Gemini responded ${upstream.status}` }))
+            return
+          }
+          const data = (await upstream.json()) as {
+            candidates?: { content?: { parts?: { text?: string }[] } }[]
+          }
+          const text = data.candidates?.[0]?.content?.parts?.find(
+            (p) => p.text,
+          )?.text
+          if (!text) {
+            res.statusCode = 422
+            res.end(
+              JSON.stringify({
+                error: 'The bill could not be read. Enter details manually.',
+              }),
+            )
+            return
+          }
+          res.end(JSON.stringify(normalizeParsedReceipt(JSON.parse(text))))
+        } catch {
+          res.statusCode = 502
+          res.end(JSON.stringify({ error: 'Could not read the bill' }))
+        }
+      })
     },
   }
 }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Load ALL env vars (empty prefix) so server-only keys like GEMINI_API_KEY are
+  // available to the dev middleware. These stay server-side — only VITE_* vars
+  // are ever exposed to the client bundle.
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
   plugins: [
     react(),
     tailwindcss(),
-    goldRateDevApi(),
+    devApi(env.GEMINI_API_KEY ?? '', env.GEMINI_MODEL ?? ''),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
@@ -126,4 +225,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  }
 })
