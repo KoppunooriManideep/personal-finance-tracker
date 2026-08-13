@@ -16,6 +16,12 @@ import {
   RECEIPT_SCHEMA,
   normalizeParsedReceipt,
 } from './src/features/investments/gold-receipt-parse.ts'
+import {
+  TRANSACTION_SCHEMA,
+  buildTransactionPrompt,
+  normalizeParsedTransaction,
+  type TransactionPromptContext,
+} from './src/features/transactions/nl-parse.ts'
 
 const GOODRETURNS_URL = 'https://www.goodreturns.in/gold-rates/'
 
@@ -170,6 +176,83 @@ function devApi(geminiKey: string, geminiModel: string): Plugin {
         } catch {
           res.statusCode = 502
           res.end(JSON.stringify({ error: 'Could not read the bill' }))
+        }
+      })
+
+      // /api/parse-transaction — Gemini NL quick-add (mirrors api/parse-transaction.ts).
+      server.middlewares.use('/api/parse-transaction', async (req, res) => {
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+        if (!geminiKey) {
+          res.statusCode = 501
+          res.end(
+            JSON.stringify({
+              error: 'Quick add is not configured (no GEMINI_API_KEY).',
+            }),
+          )
+          return
+        }
+        try {
+          let raw = ''
+          await new Promise<void>((resolve) => {
+            req.on('data', (chunk) => (raw += chunk))
+            req.on('end', () => resolve())
+          })
+          const body = JSON.parse(raw || '{}') as Partial<TransactionPromptContext>
+          if (!body.text || !body.today) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Nothing to parse' }))
+            return
+          }
+          const prompt = buildTransactionPrompt({
+            text: body.text,
+            today: body.today,
+            expenseCategories: body.expenseCategories ?? [],
+            incomeCategories: body.incomeCategories ?? [],
+            accounts: body.accounts ?? [],
+          })
+          const model = geminiModel || 'gemini-flash-latest'
+          const upstream = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: {
+                  temperature: 0,
+                  responseMimeType: 'application/json',
+                  responseSchema: TRANSACTION_SCHEMA,
+                },
+              }),
+            },
+          )
+          if (!upstream.ok) {
+            res.statusCode = 502
+            res.end(JSON.stringify({ error: `Gemini responded ${upstream.status}` }))
+            return
+          }
+          const data = (await upstream.json()) as {
+            candidates?: { content?: { parts?: { text?: string }[] } }[]
+          }
+          const text = data.candidates?.[0]?.content?.parts?.find(
+            (p) => p.text,
+          )?.text
+          if (!text) {
+            res.statusCode = 422
+            res.end(
+              JSON.stringify({ error: 'Could not understand that. Enter it manually.' }),
+            )
+            return
+          }
+          res.end(JSON.stringify(normalizeParsedTransaction(JSON.parse(text))))
+        } catch {
+          res.statusCode = 502
+          res.end(JSON.stringify({ error: 'Could not parse the note' }))
         }
       })
     },

@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -26,6 +26,8 @@ import {
   useCreateTransaction,
   useUpdateTransaction,
 } from '@/features/transactions/hooks/use-transaction-mutations'
+import { parseTransaction } from '@/features/transactions/api/parse-transaction-api'
+import { matchParsedTransaction } from '@/features/transactions/nl-match'
 import { useFamilyMembers } from '@/features/family/hooks/use-family-members'
 import { GroupedAccountOptions } from '@/features/accounts/components/grouped-account-options'
 import {
@@ -88,6 +90,41 @@ export function TransactionFormDialog({
     (category) => category.kind === type,
   )
 
+  // Natural-language "quick add": type a sentence, Gemini fills the fields.
+  const [nlText, setNlText] = useState('')
+  const [parsing, setParsing] = useState(false)
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setNlText('')
+    onOpenChange(next)
+  }
+
+  const handleQuickAdd = async () => {
+    const text = nlText.trim()
+    if (!text) return
+    try {
+      setParsing(true)
+      const parsed = await parseTransaction({ text, categories, accounts })
+      const patch = matchParsedTransaction(parsed, { categories, accounts })
+      // Set type first; the type-change effect only clears the OTHER mode's
+      // fields, so the ones we set below survive.
+      if (patch.type) setValue('type', patch.type)
+      if (patch.amount != null) setValue('amount', patch.amount)
+      if (patch.occurredOn) setValue('occurredOn', patch.occurredOn)
+      if (patch.note != null) setValue('note', patch.note)
+      if (patch.accountId) setValue('accountId', patch.accountId)
+      if (patch.categoryId) setValue('categoryId', patch.categoryId)
+      if (patch.fromAccountId) setValue('fromAccountId', patch.fromAccountId)
+      if (patch.toAccountId) setValue('toAccountId', patch.toAccountId)
+      toast.success('Filled below — check and save')
+    } catch (error) {
+      toast.error('Could not understand that — fill it in manually')
+      console.error(error)
+    } finally {
+      setParsing(false)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
 
@@ -133,7 +170,7 @@ export function TransactionFormDialog({
         await createTransaction.mutateAsync(values)
         toast.success('Transaction added')
       }
-      onOpenChange(false)
+      handleOpenChange(false)
     } catch (error) {
       toast.error(
         isEdit ? 'Could not update transaction' : 'Could not add transaction',
@@ -143,7 +180,7 @@ export function TransactionFormDialog({
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent onOpenAutoFocus={(event) => isEdit && event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
@@ -156,6 +193,51 @@ export function TransactionFormDialog({
 
         <form onSubmit={onSubmit} className="flex flex-col min-h-0 flex-1 gap-4 overflow-hidden">
           <div className="flex-1 overflow-y-auto min-h-0 space-y-4 px-6">
+            {!isEdit ? (
+              <div className="bg-muted/40 space-y-1.5 rounded-lg border p-3">
+                <Label
+                  htmlFor="nl-quick-add"
+                  className="flex items-center gap-1.5 text-sm"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Quick add
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="nl-quick-add"
+                    value={nlText}
+                    onChange={(event) => setNlText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void handleQuickAdd()
+                      }
+                    }}
+                    placeholder="e.g. paid 500 groceries at DMart yesterday"
+                    autoComplete="off"
+                    disabled={parsing}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleQuickAdd}
+                    disabled={parsing || !nlText.trim()}
+                  >
+                    {parsing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    Fill
+                  </Button>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Type it naturally; AI fills the fields below to review. Your
+                  category &amp; account names are sent to Google to match.
+                </p>
+              </div>
+            ) : null}
+
             <div className="space-y-1.5">
               <Label>Type</Label>
               <Controller
@@ -324,7 +406,7 @@ export function TransactionFormDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isPending}
             >
               Cancel
