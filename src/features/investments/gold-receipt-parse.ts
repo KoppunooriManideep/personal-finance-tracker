@@ -43,17 +43,17 @@ export const ALLOWED_FINENESS = [999, 995, 916, 875, 833, 750, 585]
 export const RECEIPT_PROMPT = `You are reading an Indian jeweller's or bullion TAX INVOICE for a gold purchase. Extract the fields into the given JSON schema. Rules:
 - form: "jewellery" for ornaments/chains/kante/bangles, "coin" for coins, "bar" for bars/biscuits. If unsure but there are making/stone charges, use "jewellery".
 - fineness: parts-per-thousand from the purity. 24K/24KT/999 -> 999; 995 -> 995; 22K/22KT/916 -> 916; 21K -> 875; 20K -> 833; 18K -> 750; 14K -> 585. Use the closest of [999,995,916,875,833,750,585].
-- weightGrams: the NET gold weight (gross weight minus stone weight) in grams. If only a gross/net weight column exists, use the net one.
-- quantity: number of pieces (Pcs). Default 1.
+- weightGrams: the NET gold weight in grams (gross minus stone). For a bill with ONE line item, use that item's net weight (per piece if it lists identical pieces). For a bill with MULTIPLE different items, use the TOTAL net weight of all items combined.
+- quantity: the number of identical pieces of a SINGLE item (the "Pcs" count). If the bill has multiple DIFFERENT items, set quantity to 1 — the app records the whole bill as one combined holding. Default 1.
 - purchaseDate: the invoice date as YYYY-MM-DD.
 - priceTotal: the FINAL amount the customer actually paid (grand total / total receipt / net amount, inclusive of GST), in rupees.
-- makingCharges: making / labour / VA charges in rupees (often a column like "VA Chg" or "MC").
-- va: value-addition charges in rupees ONLY if shown SEPARATELY from making charges; otherwise null.
+- makingCharges: charges in rupees taken from a column explicitly labeled "Making", "MC" or "Making Charges". If the bill has no such column (for example it uses a "VA" column instead), leave this null.
+- va: value-addition charges in rupees taken from a column labeled "VA", "VA Chg" or "Value Addition". If the bill has no VA column (only a Making column), leave this null. Put the amount in whichever field matches the bill's own label — never in both.
 - stoneCharges: stone / diamond / "Col.St.& Ot.Chg" charges in rupees.
 - gstPercent: the TOTAL GST rate as a number (CGST + SGST, e.g. 1.5 + 1.5 = 3).
 - discount: any discount amount in rupees (applied before GST); otherwise null.
 - brand: the shop / jeweller name.
-- items: one entry PER LINE ITEM on the bill. For each item give: name (e.g. bangles, necklace, kante, ring), goldValueRupees = that item's pure gold/metal value in rupees (the "Amount" column = net weight x rate, BEFORE making/stone/GST), vaRupees = that item's making / value-addition amount in rupees, and vaPercent = the making/VA percentage ONLY if it is explicitly printed on the bill (otherwise null).
+- items: one entry PER LINE ITEM on the bill. For each item give: name (e.g. bangles, necklace, kante, ring), netWeightGrams = that item's net gold weight in grams, goldValueRupees = that item's pure gold/metal value in rupees (the "Amount" column = net weight x rate, BEFORE making/stone/GST), vaRupees = that item's making / value-addition amount in rupees, and vaPercent = the making/VA percentage ONLY if it is explicitly printed on the bill (otherwise null).
 All amounts are plain rupee numbers with no symbols or commas. Use null for anything not clearly present. Do not guess.`
 
 /** Gemini `responseSchema` (OpenAPI subset; type names are UPPERCASE). */
@@ -80,6 +80,7 @@ export const RECEIPT_SCHEMA = {
         type: 'OBJECT',
         properties: {
           name: { type: 'STRING', nullable: true },
+          netWeightGrams: { type: 'NUMBER', nullable: true },
           goldValueRupees: { type: 'NUMBER', nullable: true },
           vaRupees: { type: 'NUMBER', nullable: true },
           vaPercent: { type: 'NUMBER', nullable: true },
@@ -160,8 +161,24 @@ export function normalizeParsedReceipt(raw: unknown): ParsedGoldReceipt {
       : null
 
   const quantityRaw = nonNegNumber(r.quantity)
-  const quantity =
+  let quantity =
     quantityRaw != null && quantityRaw >= 1 ? Math.round(quantityRaw) : null
+  let weightGrams = nonNegNumber(r.weightGrams)
+
+  // A bill with multiple DIFFERENT line items is recorded as ONE combined
+  // holding: total net weight, quantity 1. Without this, the model tends to put
+  // the item COUNT into quantity (valuation = weight x quantity would double it).
+  const items = Array.isArray(r.items) ? r.items : []
+  if (items.length >= 2) {
+    const totalWeight = items.reduce((sum, item) => {
+      const it = (item && typeof item === 'object'
+        ? item
+        : {}) as Record<string, unknown>
+      return sum + (nonNegNumber(it.netWeightGrams) ?? 0)
+    }, 0)
+    if (totalWeight > 0) weightGrams = Math.round(totalWeight * 1000) / 1000
+    quantity = 1
+  }
 
   const gstRaw = nonNegNumber(r.gstPercent)
   const gstPercent = gstRaw != null && gstRaw <= 100 ? gstRaw : null
@@ -173,7 +190,7 @@ export function normalizeParsedReceipt(raw: unknown): ParsedGoldReceipt {
     form,
     fineness: snapFineness(r.fineness),
     name: cleanString(r.name),
-    weightGrams: nonNegNumber(r.weightGrams),
+    weightGrams,
     quantity,
     purchaseDate,
     priceTotal: nonNegNumber(r.priceTotal),

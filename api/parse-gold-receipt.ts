@@ -57,7 +57,9 @@ export default async function handler(request: Request): Promise<Response> {
     return json({ error: 'Send a JPG, PNG, WebP or PDF bill.' }, 400)
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+  // 'gemini-flash-latest' (not a pinned version) — pinned ids like
+  // gemini-2.5-flash 404 for newly-created API keys.
+  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest'
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent` +
     `?key=${apiKey}`

@@ -56,6 +56,29 @@ describe('normalizeParsedReceipt', () => {
     expect(r.vaNote).toBe('VA: 12% kante, 10.5% ring')
   })
 
+  it('aggregates a multi-item bill into one holding (total weight, qty 1)', () => {
+    const r = normalizeParsedReceipt({
+      weightGrams: 11.955, // model's guess for a single item
+      quantity: 2, // the item COUNT — wrong for our weight x quantity model
+      items: [
+        { name: 'bangles', netWeightGrams: 11.955, goldValueRupees: 100000, vaRupees: 12000 },
+        { name: 'necklace', netWeightGrams: 8, goldValueRupees: 50000, vaRupees: 5000 },
+      ],
+    })
+    expect(r.weightGrams).toBe(19.955)
+    expect(r.quantity).toBe(1)
+  })
+
+  it('keeps quantity for a single repeated item', () => {
+    const r = normalizeParsedReceipt({
+      weightGrams: 8,
+      quantity: 3,
+      items: [{ name: 'coin', netWeightGrams: 8, goldValueRupees: 60000 }],
+    })
+    expect(r.weightGrams).toBe(8)
+    expect(r.quantity).toBe(3)
+  })
+
   it('has no VA note when items are missing or unusable', () => {
     expect(normalizeParsedReceipt({}).vaNote).toBeNull()
     expect(

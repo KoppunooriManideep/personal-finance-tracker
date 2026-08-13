@@ -117,7 +117,7 @@ function devApi(geminiKey: string, geminiModel: string): Plugin {
             return
           }
 
-          const model = geminiModel || 'gemini-2.5-flash'
+          const model = geminiModel || 'gemini-flash-latest'
           const upstream = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
             {
