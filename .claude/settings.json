@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(\"---BUILD---\")"
+      "PowerShell(\"---BUILD---\")",
+      "PowerShell(if \\($?\\) { \"TSC-OK\" })",
+      "PowerShell(npx eslint src/features/dashboard src/features/settings src/stores/ai-store.ts api/finance-insights.ts vite.config.ts 2>&1)",
+      "PowerShell(npx vitest run src/features/dashboard 2>&1)",
+      "PowerShell(\"ESLINT-DONE\")"
     ]
   }
 }

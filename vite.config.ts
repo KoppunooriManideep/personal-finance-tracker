@@ -22,6 +22,12 @@ import {
   normalizeParsedTransaction,
   type TransactionPromptContext,
 } from './src/features/transactions/nl-parse.ts'
+import {
+  INSIGHTS_SCHEMA,
+  buildInsightsPrompt,
+  normalizeInsights,
+  type InsightsRequest,
+} from './src/features/dashboard/insights-schema.ts'
 
 const GOODRETURNS_URL = 'https://www.goodreturns.in/gold-rates/'
 
@@ -253,6 +259,80 @@ function devApi(geminiKey: string, geminiModel: string): Plugin {
         } catch {
           res.statusCode = 502
           res.end(JSON.stringify({ error: 'Could not parse the note' }))
+        }
+      })
+
+      // /api/finance-insights — Gemini spending summary / Q&A (mirrors api/finance-insights.ts).
+      server.middlewares.use('/api/finance-insights', async (req, res) => {
+        res.setHeader('content-type', 'application/json; charset=utf-8')
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+        if (!geminiKey) {
+          res.statusCode = 501
+          res.end(
+            JSON.stringify({
+              error: 'Insights are not configured (no GEMINI_API_KEY).',
+            }),
+          )
+          return
+        }
+        try {
+          let raw = ''
+          await new Promise<void>((resolve) => {
+            req.on('data', (chunk) => (raw += chunk))
+            req.on('end', () => resolve())
+          })
+          const body = JSON.parse(raw || '{}') as InsightsRequest
+          if (
+            !body.context ||
+            (body.mode !== 'summary' && body.mode !== 'question')
+          ) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Nothing to analyse' }))
+            return
+          }
+          const prompt = buildInsightsPrompt(body)
+          const model = geminiModel || 'gemini-flash-latest'
+          const upstream = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: {
+                  temperature: 0.3,
+                  responseMimeType: 'application/json',
+                  responseSchema: INSIGHTS_SCHEMA,
+                },
+              }),
+            },
+          )
+          if (!upstream.ok) {
+            res.statusCode = 502
+            res.end(JSON.stringify({ error: `Gemini responded ${upstream.status}` }))
+            return
+          }
+          const data = (await upstream.json()) as {
+            candidates?: { content?: { parts?: { text?: string }[] } }[]
+          }
+          const text = data.candidates?.[0]?.content?.parts?.find(
+            (p) => p.text,
+          )?.text
+          if (!text) {
+            res.statusCode = 422
+            res.end(
+              JSON.stringify({ error: 'Could not generate insights right now.' }),
+            )
+            return
+          }
+          res.end(JSON.stringify(normalizeInsights(JSON.parse(text))))
+        } catch {
+          res.statusCode = 502
+          res.end(JSON.stringify({ error: 'Could not generate insights' }))
         }
       })
     },

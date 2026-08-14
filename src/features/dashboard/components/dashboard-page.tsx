@@ -62,6 +62,9 @@ import { useDashboardData } from '@/features/dashboard/hooks/use-dashboard-data'
 import { TransactionCard } from '@/features/transactions/components/transaction-card'
 import { useFamilyMembers } from '@/features/family/hooks/use-family-members'
 import { useDashboardStore } from '@/stores/dashboard-store'
+import { useAiStore } from '@/stores/ai-store'
+import { AiInsightsCard } from '@/features/dashboard/components/ai-insights-card'
+import { buildFinanceContext } from '@/features/dashboard/build-finance-context'
 import type { Transaction } from '@/features/transactions/api/transaction-queries'
 import type { AccountWithBalance } from '@/features/accounts/api/account-queries'
 import type { Category } from '@/features/categories/api/category-queries'
@@ -83,6 +86,7 @@ export function DashboardPage() {
   const { data: familyMembers, isLoading: familyMembersLoading } = useFamilyMembers()
   const { selectedOwnerId, setSelectedOwnerId, view, setView } =
     useDashboardStore()
+  const insightsEnabled = useAiStore((state) => state.insightsEnabled)
 
   const {
     data: dashboard,
@@ -116,6 +120,29 @@ export function DashboardPage() {
     if (!selectedOwnerId) return accounts
     return accounts.filter((account) => account.ownerId === selectedOwnerId)
   }, [accounts, selectedOwnerId])
+
+  const financeContext = useMemo(() => {
+    if (!dashboard) return null
+    const scopeLabel = selectedOwnerId
+      ? getFirstName(
+          selectedMember?.profile?.fullName ||
+            selectedMember?.displayName ||
+            'this member',
+        )
+      : 'the whole family'
+    return buildFinanceContext({
+      selectedMonth,
+      monthLabel: formatMonthYear(new Date(`${selectedMonth}-01T00:00:00+05:30`)),
+      scopeLabel,
+      totalIncomePaise: dashboard.totalIncome,
+      totalExpensePaise: dashboard.totalExpense,
+      expenseByCategory: dashboard.expenseByCategory.map((c) => ({
+        name: c.name,
+        value: c.value,
+      })),
+      monthlyIncomeExpense: dashboard.monthlyIncomeExpense,
+    })
+  }, [dashboard, selectedMonth, selectedOwnerId, selectedMember])
 
   const isLoading =
     dashboardLoading ||
@@ -345,6 +372,10 @@ export function DashboardPage() {
             familyMembers={familyMembers ?? []}
             selectedOwnerId={selectedOwnerId}
           />
+
+          {insightsEnabled && financeContext ? (
+            <AiInsightsCard context={financeContext} />
+          ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <ExpenseByCategoryChart data={dashboard.expenseByCategory} />
